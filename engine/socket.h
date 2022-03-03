@@ -186,10 +186,8 @@ private:
 public:
 	sequence_buffer readBuffer;
 	sequence_buffer writeBuffer;
-	Mutex write_mutex_;
 
 	SocketStatus status_;
-	Mutex status_mutex_;
 
 	uint32 recvbuffersize_;
 
@@ -199,8 +197,6 @@ public:
 
 	bool is_parse_package_;
 	bool is_tcp_client_;
-
-	SocketIOThread* work_thread_;
 
 	Mutex ref_mutex_;
 

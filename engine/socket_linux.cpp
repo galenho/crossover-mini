@@ -9,7 +9,7 @@
 
 bool Socket::PostEvent(uint32 events)
 {
-	int epoll_fd = work_thread_->GetEpollFd();
+	int epoll_fd = SocketMgr::get_instance()->GetEpollFd();
 
 	struct epoll_event ev;
 	memset(&ev, 0, sizeof(epoll_event));

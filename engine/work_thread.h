@@ -26,12 +26,11 @@ public:
 public:
 	void set_init_handler(init_handler_type init_handler);
 
-	void PushTask(Task* task);
-
 	uint32 add_timer(uint32 interval, HandleInfo handler);
 	void remove_timer(uint32 index);
 	void stop_all_timer();
 
+	void PushTask(Task* task);
 	void WakeUp();
 
 protected:

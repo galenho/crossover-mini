@@ -57,9 +57,6 @@ Socket::Socket(SocketType socket_type,
 
 	p_kcp_ = NULL;
 
-	work_thread_ = SocketMgr::get_instance()->get_free_work_thread();
-	SocketMgr::get_instance()->add_socket_ref(work_thread_);
-
 	// Check for needed fd allocation.
 	if (fd_ == 0)
 	{
@@ -96,11 +93,6 @@ Socket::Socket(SocketType socket_type,
 Socket::~Socket()
 {
 	//PRINTF_INFO("delete fd = %d, conn_idx = %d", fd_, conn_idx_);
-	if (work_thread_)
-	{
-		SocketMgr::get_instance()->remove_socket_ref(work_thread_);
-		work_thread_ = NULL;
-	}
 }
 
 void Socket::AddRef()
@@ -162,7 +154,7 @@ bool Socket::Connect(const char* address, uint16 port)
 
 	// IOCP stuff
 #ifdef CONFIG_USE_IOCP
-	if (CreateIoCompletionPort((HANDLE)fd_, work_thread_->GetCompletionPort(), (ULONG_PTR)this, 0) == 0)
+	if (CreateIoCompletionPort((HANDLE)fd_, SocketMgr::get_instance()->GetCompletionPort(), (ULONG_PTR)this, 0) == 0)
 	{
 		return false;
 	}
@@ -209,7 +201,7 @@ bool Socket::ConnectEx(const char* address, uint16 port)
 	SocketOps::DisableBuffering(fd_);
 
 	// IOCP stuff
-	if (CreateIoCompletionPort((HANDLE)fd_, work_thread_->GetCompletionPort(), (ULONG_PTR)this, 0) == 0)
+	if (CreateIoCompletionPort((HANDLE)fd_, SocketMgr::get_instance()->GetCompletionPort(), (ULONG_PTR)this, 0) == 0)
 	{
 		return false;
 	}
@@ -314,7 +306,7 @@ bool Socket::ConnectUDP(const char* address, uint16 port, uint16& local_port)
 
 	// IOCP stuff
 #ifdef CONFIG_USE_IOCP
-	if (CreateIoCompletionPort((HANDLE)fd_, work_thread_->GetCompletionPort(), (ULONG_PTR)this, 0) == 0)
+	if (CreateIoCompletionPort((HANDLE)fd_, SocketMgr::get_instance()->GetCompletionPort(), (ULONG_PTR)this, 0) == 0)
 	{
 		return false;
 	}
@@ -333,7 +325,7 @@ void Socket::Accept(sockaddr_in* address)
 
 	// IOCP stuff
 #ifdef CONFIG_USE_IOCP
-	CreateIoCompletionPort((HANDLE)fd_, work_thread_->GetCompletionPort(), (ULONG_PTR)this, 0);
+	CreateIoCompletionPort((HANDLE)fd_, SocketMgr::get_instance()->GetCompletionPort(), (ULONG_PTR)this, 0);
 #endif
 }
 
@@ -475,7 +467,7 @@ void Socket::Disconnect()
 {
 #ifdef CONFIG_USE_IOCP
 	close_event_.SetEvent(SOCKET_IO_EVENT_CLOSE);
-	PostQueuedCompletionStatus(work_thread_->GetCompletionPort(), 0, (ULONG_PTR)this, &close_event_.overlap_);
+	PostQueuedCompletionStatus(SocketMgr::get_instance()->GetCompletionPort(), 0, (ULONG_PTR)this, &close_event_.overlap_);
 #else
 	SocketEvent event;
 	event.s = this;
@@ -487,16 +479,13 @@ void Socket::Disconnect()
 
 bool Socket::Send(const void* buff, uint32 len)
 {
-	write_mutex_.Lock();
-
 	bool ret = writeBuffer.Write(buff, len);
-	write_mutex_.UnLock();
 
 #ifdef CONFIG_USE_IOCP
 	if (ret)
 	{
 		delay_send_event_.SetEvent(SOCKET_IO_EVENT_DELAY_SEND);
-		PostQueuedCompletionStatus(work_thread_->GetCompletionPort(), 0, (ULONG_PTR)this, &delay_send_event_.overlap_);
+		PostQueuedCompletionStatus(SocketMgr::get_instance()->GetCompletionPort(), 0, (ULONG_PTR)this, &delay_send_event_.overlap_);
 	}
 #else
 	if (ret)
@@ -514,17 +503,14 @@ bool Socket::Send(const void* buff, uint32 len)
 
 bool Socket::SendMsg(const void* buff, uint32 len)
 {
-	write_mutex_.Lock();
-
 	// Æ´°ü
 	bool ret = writeBuffer.WriteMsg(&len, 4, buff, len);
-	write_mutex_.UnLock();
 
 #ifdef CONFIG_USE_IOCP
 	if (ret)
 	{
 		delay_send_event_.SetEvent(SOCKET_IO_EVENT_DELAY_SEND);
-		PostQueuedCompletionStatus(work_thread_->GetCompletionPort(), 0, (ULONG_PTR)this, &delay_send_event_.overlap_);
+		PostQueuedCompletionStatus(SocketMgr::get_instance()->GetCompletionPort(), 0, (ULONG_PTR)this, &delay_send_event_.overlap_);
 	}
 #else
 	if (ret)

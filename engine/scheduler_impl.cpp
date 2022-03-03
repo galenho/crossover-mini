@@ -26,11 +26,6 @@ void Scheduler_impl::set_io_thread_count(uint32 thread_count)
 
 bool Scheduler_impl::startup(init_handler_type init_handler)
 {
-	if (io_thread_count_ > 0)
-	{
-		SocketMgr::get_instance()->Init(io_thread_count_);
-	}
-	
 	// 激活工作线程
 	work_thread_ = new WorkThread();
 	work_thread_->set_init_handler(init_handler);

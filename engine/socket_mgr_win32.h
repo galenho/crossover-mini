@@ -5,17 +5,12 @@
 **     qq: 88104725
 *
 *
-* 核心类: (1) 采用引用计数机制来防止重复删除Socket对象或野指针
-*             需要加引用的地方主要有4处 ---- 读投递, 写投递, hash_map引用, 逻辑处理引用 
-*		  (2) 采用状态机锁来控制Socket的状态
-*		  (3) 采用读写缓冲区来实现双向异步通讯
-*		  (4) 外部只能采用Disconnect函数来主动关闭Socket
+* 核心类: 
 */
 #ifndef _SOCKETMGR_WIN32_H_
 #define _SOCKETMGR_WIN32_H_
 
 #ifdef CONFIG_USE_IOCP
-#include "thread_base.h"
 #include "singleton.h"
 #include "rwlock.h"
 
@@ -37,40 +32,19 @@ static OperationHandler ophandlers[MAX_SOCKET_IO_EVENTS] =
 };
 
 //----------------------------------------------------------------------------
-class SocketIOThread : public ThreadBase
-{
-public:
-	SocketIOThread();
-	virtual ~SocketIOThread();
-
-	bool Init();
-
-	virtual bool Run();
-	void Shutdown();
-
-	inline HANDLE GetCompletionPort()
-	{
-		return completion_port_;
-	}
-
-public:
-	// socket的引用计数
-	int32 socket_ref_count_;
-
-private:
-	HANDLE completion_port_;
-};
-//----------------------------------------------------------------------------
 class SocketMgr : public Singleton<SocketMgr>
 {
 public:
 	SocketMgr();
 	~SocketMgr();
 
-	bool Init(uint32 thread_count);
+	bool Init();
 	bool Close();
 
+	int EventLoop(uint32 cur_time);
 	void Update(uint32 cur_time);
+
+	HANDLE GetCompletionPort();
 
 	uint32 Connect( const string& ip, uint16 port,
 		const HandleInfo onconnected_handler,
@@ -127,26 +101,12 @@ public:
 
 	char* GetIpAddress(uint32 conn_idx);
 	
-	SocketIOThread* get_free_work_thread();
-	void add_socket_ref( SocketIOThread* work_thread );
-	void remove_socket_ref( SocketIOThread* work_thread );
-
-private:
-	void SpawnIOThreads();
-
 public:
 	hash_map<uint32, Socket*> socket_map_;
-	RwLock socket_lock;
+	HANDLE completion_port_;
 
 private:
-	vector<SocketIOThread*> io_threads_;
-	uint32 thread_count_;
-
-	Mutex  conn_idx_mutex_;
 	uint32 auto_conn_idx_;  //用conn_idx来做为socket_map_的Key, 因为端口事件检测使用的是指针ptr形式的
-
-	// Socket的引用计数锁
-	Mutex socket_ref_mutex_;
 };
 
 #endif

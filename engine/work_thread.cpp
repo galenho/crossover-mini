@@ -42,6 +42,8 @@ bool WorkThread::Run()
 		init_handler_();
 	}
 
+	SocketMgr::get_instance()->Init();
+
 	uint32 last_time = getMSTime();
 	int32 wait_time = 100; //Ã¿Ö¡100ms
 	while (is_running_)
@@ -98,6 +100,7 @@ bool WorkThread::Run()
 		//------------------------------------------------------------------------
 		// (2) ´¦ÀíSocket
 		//------------------------------------------------------------------------
+		SocketMgr::get_instance()->EventLoop(cur_time_);
 		SocketMgr::get_instance()->Update(cur_time_);
 		
 		//------------------------------------------------------------------------
@@ -125,15 +128,15 @@ void WorkThread::Shutdown()
 	WakeUp();
 }
 
-void WorkThread::WakeUp()
-{
-	event_.Notify();
-}
-
 void WorkThread::PushTask(Task* task)
 {
 	task_list_.push_back(task);
 	WakeUp();
+}
+
+void WorkThread::WakeUp()
+{
+	event_.Notify();
 }
 
 uint32 WorkThread::MakeGeneralTimerID()

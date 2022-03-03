@@ -21,20 +21,6 @@
 class Socket;
 class SocketIOThread;
 
-/*
-struct EveryEvent
-{
-	bool is_epoll_event;
-	uint32 events;
-
-	EveryEvent()
-	{
-		is_epoll_event = true;
-		events = 0;
-	}
-};
-*/
-
 struct SocketEvent
 {
 	uint32 customized_events;
@@ -47,42 +33,6 @@ struct SocketEvent
 	}
 };
 
-class SocketIOThread : public ThreadBase
-{
-public:
-	SocketIOThread();
-	virtual ~SocketIOThread();
-
-	bool Init();
-
-	bool Run();
-	void Shutdown();
-
-	void WakeUp();
-
-	inline int GetEpollFd()
-	{
-		return epoll_fd;
-	}
-
-private:
-	void HandleDelayEvent();
-
-public:
-	SafeQueue<SocketEvent> event_queue_;
-
-	// socket的引用计数
-	int32 socket_ref_count_;
-
-private:
-	int epoll_fd;
-
-	// epoll event struct
-	struct epoll_event events[THREAD_EVENT_SIZE];
-
-	Socket* wakeup_s_;
-};
-
 class SocketMgr : public Singleton<SocketMgr>
 {
 public:
@@ -93,10 +43,15 @@ public:
 	~SocketMgr();
 
 	uint32 MakeGeneralConnID();
+	int GetEpollFd();
 
 	bool Init(uint32 thread_count);
 	bool Close();
-	
+
+	void WakeUp();
+
+	void HandleDelayEvent();
+	int  EventLoop(uint32 cur_time);
 	void Update(uint32 cur_time);
 
 	void Accept( SOCKET aSocket, 
@@ -145,31 +100,22 @@ public:
 	bool Send(uint32 conn_idx, const void* content, uint32 len);
 	bool SendMsg(uint32 conn_idx, const void* content, uint32 len);
 
-	void SpawnIOThreads();
-	void ShutdownThreads();
-
 	void AddSocket(Socket* s);
 	void RemoveSocket(uint32 conn_idx);
 
 	char* GetIpAddress(uint32 conn_idx);
 
-	SocketIOThread* get_free_work_thread();
-	void add_socket_ref( SocketIOThread* work_thread );
-	void remove_socket_ref( SocketIOThread* work_thread );
-
 public:
 	hash_map<uint32, Socket*> socket_map_;
-	RwLock socket_lock;
-	
-private:
-	uint32 thread_count_;
-	std::vector<SocketIOThread* > io_threads_;
+	int epoll_fd_;
+	SafeQueue<SocketEvent> event_queue_;
 
-	Mutex  conn_idx_mutex_;
+private:
 	uint32 auto_conn_idx_;  //用conn_idx来做为socket_map_的Key, 因为端口事件检测使用的是指针ptr形式的
 
-	// Socket的引用计数锁
-	Mutex socket_ref_mutex_;
+	// epoll event struct
+	struct epoll_event events[THREAD_EVENT_SIZE];
+	Socket* wakeup_s_;
 };
 
 #endif

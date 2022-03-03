@@ -111,13 +111,11 @@ void HandleReadComplete(Socket* s)
 	}
 
 	//---------------------------------------------------------------------
-	s->write_mutex_.Lock();
 	s->GetWriteBuffer().FillVector(); //galen: 这句是防止有缓冲区扩展, new出来的内存
 	if (s->GetWriteBuffer().GetSize() > 0)
 	{
 		s->BurstPush(); //如果写缓冲区里边有数据的话，把控制权变给写
 	}
-	s->write_mutex_.UnLock();
 }
 
 void HandleCanWrite(Socket* s)
@@ -130,7 +128,6 @@ void HandleCanWrite(Socket* s)
 
 	if (s->status_ == socket_status_connectted)
 	{
-		s->write_mutex_.Lock();
 		s->GetWriteBuffer().FillVector(); //galen: 这句是防止有缓冲区扩展, new出来的内存
 
 		s->WriteCallback();   		// Perform actual send()
@@ -146,7 +143,6 @@ void HandleCanWrite(Socket* s)
 			// galen: 这个也要切到EPOLLIN状态, 因为如果MS----CS两边都处于写缓冲溢出, 在等待对端recv掉缓冲字节才会返回EPOLLOUT事件, 那就死锁了
 			s->PostEvent(EPOLLIN | EPOLLOUT);
 		}
-		s->write_mutex_.UnLock();
 	}
 	else if (s->status_ == socket_status_closing) 
 	{
@@ -161,13 +157,11 @@ void HandleDelaySend(Socket* s)
 {
 	if (s->status_ == socket_status_connectted)
 	{
-		s->write_mutex_.Lock();
 		s->GetWriteBuffer().FillVector(); //galen: 这句是防止有缓冲区扩展, new出来的内存
 		if (s->GetWriteBuffer().GetSize() > 0)
 		{
 			s->BurstPush(); //如果写缓冲区里边有数据的话，把控制权变给写
 		}
-		s->write_mutex_.UnLock();
 	}
 }
 
@@ -181,199 +175,11 @@ void HandleClose(Socket* s)
 }
 
 //----------------------------------------------------------------------------------------------------
-SocketIOThread::SocketIOThread()
-{
-	epoll_fd = 0;
-	socket_ref_count_ = 0;
-
-	wakeup_s_ = NULL;
-}
-
-SocketIOThread::~SocketIOThread()
-{
-	if (wakeup_s_)
-	{
-		epoll_event ev = { 0, { 0 } };
-		epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wakeup_s_->GetFd(), &ev);
-
-		close(wakeup_s_->GetFd());
-
-		delete wakeup_s_;
-		wakeup_s_ = NULL;
-	}
-	
-	if (epoll_fd)
-	{
-		close(epoll_fd);
-	}
-}
-
-bool SocketIOThread::Init()
-{
-	epoll_fd = epoll_create(SOCKET_HOLDER_SIZE);
-	
-	if (epoll_fd == -1)
-	{
-		PRINTF_ERROR("Could not create epoll fd (/dev/epoll).");
-		return false;
-	}
-
-	int wakeup_fd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-	if (wakeup_fd < 0)
-	{
-		return false;
-	}
-
-	wakeup_s_ = new Socket(wakeup_fd, this);
-	
-	struct epoll_event event;
-	memset(&event, 0, sizeof(event));
-	event.events = EPOLLIN;
-	event.data.ptr = wakeup_s_;
-	int ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, wakeup_s_->GetFd(), &event);
-	if (ret < 0)
-	{
-		return false;
-	}
-
-	return true;
-}
-
-void SocketIOThread::Shutdown()
-{
-	is_running_ = false;
-
-	WakeUp();
-}
-
-void SocketIOThread::WakeUp()
-{
-	uint64 one = 1;
-	::write(wakeup_s_->GetFd(), &one, sizeof(one));
-}
-
-bool SocketIOThread::Run()
-{
-	// 线程开始运行
-	Scheduler::get_instance()->add_thread_ref(thread_name_);
-
-	while (is_running_)
-	{
-		int32 fd_count = epoll_wait(epoll_fd, events, THREAD_EVENT_SIZE, -1);
-
-		//PRINTF_INFO("epoll_fd = %d , epoll_wait fd_count = %d", epoll_fd, fd_count);
-		//PRINTF_INFO("---------------------------------------------------");
-	
-		
-		if (fd_count == 0) // 定时器
-		{
-			continue; 
-		}
-		else if (fd_count > 0)
-		{
-			for (int i = 0; i < fd_count; i++)
-			{
-				uint32 event = events[i].events;
-				Socket* s = (Socket*)(events[i].data.ptr);
-
-				//PRINTF_INFO("epoll_wait fd = %d, events = %d", s->GetFd(), events[i].events);
-
-				if (s == wakeup_s_) //唤醒事件
-				{
-					if (event & EPOLLIN)
-					{
-						uint64 one = 1;
-						uint32 size = read(wakeup_s_->GetFd(), &one, sizeof(one));
-						if (size == sizeof(one))
-						{
-							HandleDelayEvent();
-						}	
-					}
-
-					continue;	
-				}
-				//------------------------------------------------------------
-
-				REF_ADD(s);
-				s->status_mutex_.Lock();
-
-				if (event & EPOLLHUP || event & EPOLLERR)
-				{
-					if (s->status_ == socket_status_connecting)
-					{
-						HandleConnect(s, false);
-					}
-					else
-					{
-						SocketMgr::get_instance()->CloseSocket(s);
-					}
-				}
-				else
-				{
-					if (event & EPOLLIN)
-					{
-						HandleReadComplete(s);
-					}
-
-					if (event & EPOLLOUT)
-					{
-						if (s->status_ == socket_status_connecting)
-						{
-							HandleConnect(s, true);
-						}
-						else
-						{
-							HandleCanWrite(s);
-						}
-					}
-				}
-
-				s->status_mutex_.UnLock();
-				REF_RELEASE(s);
-			}
-		}
-		else
-		{
-			// 有错误
-		}
-	}
-
-	
-	// 线程结束运行
-	Scheduler::get_instance()->remove_thread_ref(thread_name_);
-
-	return true;
-}
-
-void SocketIOThread::HandleDelayEvent()
-{
-	SocketEvent event;
-	while(event_queue_.pop(event))
-	{
-		Socket* s = event.s;
-
-		s->status_mutex_.Lock();
-
-		if (event.customized_events == SOCKET_IO_EVENT_CLOSE)
-		{
-			HandleClose(s);
-		}
-		else if (event.customized_events == SOCKET_IO_EVENT_DELAY_SEND)
-		{
-			HandleDelaySend(s);
-		}
-
-		s->status_mutex_.UnLock();
-
-		REF_RELEASE(s);
-	}
-}
-
-//----------------------------------------------------------------------------------------------------
 initialiseSingleton(SocketMgr);
 SocketMgr::SocketMgr()
 {
 	auto_conn_idx_ = 1;
+	epoll_fd = 0;
 }
 
 SocketMgr::~SocketMgr()
@@ -388,12 +194,69 @@ SocketMgr::~SocketMgr()
 	io_threads_.clear();
 }
 
+bool SocketMgr::Init(uint32 thread_count)
+{
+	epoll_fd_ = epoll_create(SOCKET_HOLDER_SIZE);
+
+	if (epoll_fd_ == -1)
+	{
+		PRINTF_ERROR("Could not create epoll fd (/dev/epoll).");
+		return false;
+	}
+
+	int wakeup_fd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+	if (wakeup_fd < 0)
+	{
+		return false;
+	}
+
+	wakeup_s_ = new Socket(wakeup_fd, this);
+
+	struct epoll_event event;
+	memset(&event, 0, sizeof(event));
+	event.events = EPOLLIN;
+	event.data.ptr = wakeup_s_;
+	int ret = epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, wakeup_s_->GetFd(), &event);
+	if (ret < 0)
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool SocketMgr::Close()
+{
+	if (wakeup_s_)
+	{
+		epoll_event ev = { 0, { 0 } };
+		epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, wakeup_s_->GetFd(), &ev);
+
+		close(wakeup_s_->GetFd());
+
+		delete wakeup_s_;
+		wakeup_s_ = NULL;
+	}
+
+	if (epoll_fd_)
+	{
+		close(epoll_fd_);
+	}
+
+	return true;
+}
+
+void SocketMgr::WakeUp()
+{
+	uint64 one = 1;
+	::write(wakeup_s_->GetFd(), &one, sizeof(one));
+}
+
 uint32 SocketMgr::MakeGeneralConnID()
 {
 	uint32 conn_idx = INVALID_INDEX;
 
-	socket_lock.ReadLock();
-	while(true)
+	while (true)
 	{
 		hash_map<uint32, Socket*>::iterator it = socket_map_.find(auto_conn_idx_);
 		if (it != socket_map_.end())
@@ -409,7 +272,6 @@ uint32 SocketMgr::MakeGeneralConnID()
 			break;
 		}
 	}
-	socket_lock.ReadUnLock();
 
 	conn_idx = auto_conn_idx_;
 	++auto_conn_idx_;
@@ -421,56 +283,112 @@ uint32 SocketMgr::MakeGeneralConnID()
 	return conn_idx;
 }
 
-bool SocketMgr::Init(uint32 thread_count)
+int SocketMgr::GetEpollFd()
 {
-	thread_count_ = thread_count;
-	SpawnIOThreads();
-	return true;
+	return epoll_fd;
 }
 
-bool SocketMgr::Close()
+void SocketMgr::HandleDelayEvent()
 {
-	ShutdownThreads();
-	return true;
+	SocketEvent event;
+	while (event_queue_.pop(event))
+	{
+		Socket* s = event.s;
+
+		if (event.customized_events == SOCKET_IO_EVENT_CLOSE)
+		{
+			HandleClose(s);
+		}
+		else if (event.customized_events == SOCKET_IO_EVENT_DELAY_SEND)
+		{
+			HandleDelaySend(s);
+		}
+	}
+}
+
+int SocketMgr::EventLoop(uint32 cur_time)
+{
+	int32 fd_count = epoll_wait(epoll_fd, events, THREAD_EVENT_SIZE, -1);
+
+	//PRINTF_INFO("epoll_fd = %d , epoll_wait fd_count = %d", epoll_fd, fd_count);
+	//PRINTF_INFO("---------------------------------------------------");
+
+	if (fd_count == 0) // 定时器
+	{
+		return 0;
+	}
+	else if (fd_count > 0)
+	{
+		for (int i = 0; i < fd_count; i++)
+		{
+			uint32 event = events[i].events;
+			Socket* s = (Socket*)(events[i].data.ptr);
+
+			//PRINTF_INFO("epoll_wait fd = %d, events = %d", s->GetFd(), events[i].events);
+
+			if (s == wakeup_s_) //唤醒事件
+			{
+				if (event & EPOLLIN)
+				{
+					uint64 one = 1;
+					uint32 size = read(wakeup_s_->GetFd(), &one, sizeof(one));
+					if (size == sizeof(one))
+					{
+						HandleDelayEvent();
+					}
+				}
+
+				continue;
+			}
+			//------------------------------------------------------------
+			if (event & EPOLLHUP || event & EPOLLERR)
+			{
+				if (s->status_ == socket_status_connecting)
+				{
+					HandleConnect(s, false);
+				}
+				else
+				{
+					SocketMgr::get_instance()->CloseSocket(s);
+				}
+			}
+			else
+			{
+				if (event & EPOLLIN)
+				{
+					HandleReadComplete(s);
+				}
+
+				if (event & EPOLLOUT)
+				{
+					if (s->status_ == socket_status_connecting)
+					{
+						HandleConnect(s, true);
+					}
+					else
+					{
+						HandleCanWrite(s);
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		// 有错误
+	}
+
+	return 0;
 }
 
 void SocketMgr::Update( uint32 cur_time )
 {
-	socket_lock.ReadLock();
 	hash_map<uint32, Socket*>::iterator it = socket_map_.begin();
 	for (; it != socket_map_.end(); it++)
 	{
 		Socket* s = it->second;
 	
-		REF_ADD(s);
 		s->Update(cur_time);
-		REF_RELEASE(s);
-	}
-	socket_lock.ReadUnLock();
-}
-
-void SocketMgr::SpawnIOThreads()
-{
-	//PRINTF_INFO("epoll workthread = %d", thread_count_);
-
-	for (uint32 x = 0; x < thread_count_; ++x)
-	{
-		SocketIOThread *work_thread = new SocketIOThread();
-		bool ret = work_thread->Init();
-		ASSERT(ret);
-
-		string name = "work_thread" + x;
-		work_thread->set_name(name);
-		work_thread->Activate();
-		io_threads_.push_back(work_thread);
-	}
-}
-
-void SocketMgr::ShutdownThreads()
-{
-	for (uint32 n=0; n < io_threads_.size(); n++)
-	{
-		io_threads_[n]->Shutdown();
 	}
 }
 
@@ -495,8 +413,6 @@ void SocketMgr::Accept( SOCKET aSocket,
 	
 	AddSocket(s); //加入socket列表
 
-	s->status_mutex_.Lock();
-	
 	s->status_ = socket_status_connectted;
 
 	// Add epoll event based on socket activity.
@@ -511,15 +427,12 @@ void SocketMgr::Accept( SOCKET aSocket,
 		PRINTF_ERROR("epoll", "Could not add event to epoll set on fd %u ", s->GetFd());
 		
 		SocketOps::CloseSocket(s->GetFd()); //直接调用关闭closesocket
-		s->status_mutex_.UnLock();
 		RemoveSocket(s->GetConnectIdx());
 	}
 	else
 	{
 		s->Accept(&address);
 		s->OnConnect(true);
-		
-		s->status_mutex_.UnLock();
 	}
 }
 
@@ -540,13 +453,11 @@ uint32 SocketMgr::Connect(const string& ip, uint16 port,
 							sendbuffersize, 
 							recvbuffersize );
 
-	s->status_mutex_.Lock();
 	s->status_ = socket_status_connecting;
 
 	bool ret = s->Connect(ip.c_str(), port);
 	if (!ret)
 	{
-		s->status_mutex_.UnLock();
 		delete s;
 		s = NULL;
 		return INVALID_INDEX;
@@ -570,7 +481,6 @@ uint32 SocketMgr::Connect(const string& ip, uint16 port,
 		}
 		//----------------------------------------------------------------------------------------
 		s->OnConnect(true);
-		s->status_mutex_.UnLock();
 
 		return s->GetConnectIdx();
 	}
@@ -595,9 +505,7 @@ uint32 SocketMgr::ConnectEx( const string& ip, uint16 port,
 		recvbuffersize,
 		is_parse_package);
 
-	s->status_mutex_.Lock();
 	s->status_ = socket_status_connecting;
-	s->status_mutex_.UnLock();
 
 	bool ret = s->ConnectEx(ip.c_str(), port);
 	if (ret)
@@ -643,13 +551,11 @@ uint32 SocketMgr::ConnectUDP(const string& ip, uint16 port, uint16& local_port,
 		sendbuffersize,
 		recvbuffersize);
 
-	s->status_mutex_.Lock();
 	s->status_ = socket_status_connecting;
 
 	bool ret = s->ConnectUDP(ip.c_str(), port, local_port);
 	if (!ret)
 	{
-		s->status_mutex_.UnLock();
 		delete s;
 		s = NULL;
 		return INVALID_INDEX;
@@ -674,15 +580,12 @@ uint32 SocketMgr::ConnectUDP(const string& ip, uint16 port, uint16& local_port,
 			SocketOps::CloseSocket(s->GetFd()); //直接调用关闭closesocket
 			s->status_ = socket_status_closed;
 			s->OnConnect(false);
-			s->status_mutex_.UnLock();
 			RemoveSocket(s->GetConnectIdx());
 
 			return INVALID_INDEX;
 		}
 		else
 		{
-			s->status_mutex_.UnLock();
-
 			if (is_server_build) //如果是服务器主动创建的
 			{
 				s->is_udp_connected_ = true;
@@ -728,7 +631,6 @@ bool SocketMgr::AcceptUDP(sockaddr_in& remote_address,
 //------------------------------------------------------------------------------
 void SocketMgr::AddSocket(Socket* s)
 {
-	socket_lock.WriteLock();
 	hash_map<uint32, Socket*>::iterator it = socket_map_.find(s->GetConnectIdx());
 	if (it != socket_map_.end())
 	{
@@ -738,7 +640,6 @@ void SocketMgr::AddSocket(Socket* s)
 	{
 		if (socket_map_.insert(make_pair(s->GetConnectIdx(), s)).second)
 		{
-			REF_ADD(s);
 			//PRINTF_DEBUG("add socket count = %d", socket_map_.size());
 		}
 		else
@@ -746,12 +647,10 @@ void SocketMgr::AddSocket(Socket* s)
 			ASSERT(false);
 		}
 	}
-	socket_lock.WriteUnLock();
 }
 
 void SocketMgr::RemoveSocket(uint32 conn_idx)
 {
-	socket_lock.WriteLock();
 	hash_map<uint32, Socket*>::iterator it = socket_map_.find(conn_idx);
 	if (it != socket_map_.end())
 	{
@@ -763,27 +662,22 @@ void SocketMgr::RemoveSocket(uint32 conn_idx)
 			PRINTF_ERROR("RemoveSocket Could not remove fd %u from epoll set, errno %u", conn_idx, errno);
 		}
 		//--------------------------------------------------------------------------------------------
-		REF_RELEASE(s);
 	
 		socket_map_.erase(it);
 
 		//PRINTF_DEBUG("remove socket count = %d", socket_map_.size());
 	}
-	socket_lock.WriteUnLock();
 }
 
 void SocketMgr::Disconnect(uint32 conn_idx)
 {
 	Socket* s = NULL;
 
-	socket_lock.ReadLock();
 	hash_map<uint32, Socket*>::iterator it = socket_map_.find(conn_idx);
 	if (it != socket_map_.end())
 	{
 		s = it->second;
-		REF_ADD(s);
 	}
-	socket_lock.ReadUnLock();
 	//------------------------------------------------------------------------
 	if (s)
 	{
@@ -809,24 +703,15 @@ void SocketMgr::CloseSocket(Socket* s)
 bool SocketMgr::Send(uint32 conn_idx, const void* content, uint32 len)
 {
 	Socket* s = NULL;
-
-	socket_lock.ReadLock();
 	hash_map<uint32, Socket*>::iterator it = socket_map_.find(conn_idx);
 	if (it != socket_map_.end())
 	{
 		s = it->second;
-		REF_ADD(s);
 	}
-	socket_lock.ReadUnLock();
 	//--------------------------------------------------------------------------
 	if (s)
 	{
 		bool ret = s->Send(content, len);
-		if (!ret)
-		{
-			REF_RELEASE(s);
-		}
-
 		return ret;
 	}
 	else
@@ -838,15 +723,11 @@ bool SocketMgr::Send(uint32 conn_idx, const void* content, uint32 len)
 bool SocketMgr::SendMsg(uint32 conn_idx, const void* content, uint32 len)
 {
 	Socket* s = NULL;
-
-	socket_lock.ReadLock();
 	hash_map<uint32, Socket*>::iterator it = socket_map_.find(conn_idx);
 	if (it != socket_map_.end())
 	{
 		s = it->second;
-		REF_ADD(s);
 	}
-	socket_lock.ReadUnLock();
 	//--------------------------------------------------------------------------
 	if (s)
 	{
@@ -869,11 +750,6 @@ bool SocketMgr::SendMsg(uint32 conn_idx, const void* content, uint32 len)
 
 		}
 
-		if (!ret)
-		{
-			REF_RELEASE(s);
-		}
-
 		return ret;
 	}
 	else
@@ -886,7 +762,6 @@ char* SocketMgr::GetIpAddress( uint32 conn_idx )
 {
 	char* ip_addr = NULL;
 
-	socket_lock.ReadLock();
 	hash_map<uint32, Socket*>::iterator it = socket_map_.find(conn_idx);
 	if (it != socket_map_.end())
 	{
@@ -894,39 +769,8 @@ char* SocketMgr::GetIpAddress( uint32 conn_idx )
 
 		ip_addr = inet_ntoa(s->GetRemoteStruct().sin_addr);	
 	}
-	socket_lock.ReadUnLock();
 
 	return ip_addr;
-}
-//----------------------------------------------------------------------------
-SocketIOThread* SocketMgr::get_free_work_thread()
-{
-	ASSERT(io_threads_.size() > 0);
-
-	Guard guard(socket_ref_mutex_);
-	int32 min_count = io_threads_[0]->socket_ref_count_;
-	SocketIOThread* work_thread = io_threads_[0];
-	for (uint32 i = 1; i < io_threads_.size(); ++i)
-	{
-		if (io_threads_[i]->socket_ref_count_ < min_count)
-		{
-			min_count = io_threads_[i]->socket_ref_count_;
-			work_thread = io_threads_[i];
-		}
-	}
-	return work_thread;
-}
-
-void SocketMgr::add_socket_ref( SocketIOThread* work_thread )
-{
-	Guard guard(socket_ref_mutex_);
-	work_thread->socket_ref_count_++;
-}
-
-void SocketMgr::remove_socket_ref( SocketIOThread* work_thread )
-{
-	Guard guard(socket_ref_mutex_);
-	work_thread->socket_ref_count_--;
 }
 
 #endif
