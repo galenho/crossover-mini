@@ -301,7 +301,15 @@ HttpTask::HttpTask()
 
 HttpTask::~HttpTask()
 {
-	
+	if (handle_.fun_id > 0)
+	{
+		toluafix_remove_function_by_refid(g_lua_state, handle_.fun_id);
+	}
+
+	if (handle_.param_id > 0)
+	{
+		toluafix_remove_param_by_refid(g_lua_state, handle_.param_id);
+	}
 }
 
 void HttpTask::Init(HandleInfo handle, bool is_success, string& recv_buff, uint32 use_time)

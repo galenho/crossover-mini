@@ -14,14 +14,14 @@ WorkThread::~WorkThread()
 {
 	del_timer_list_.clear();
 	//-----------------------------------------------------------------------------------------
-	hash_map<uint32, IntervalTimer*>::iterator it = timer_list_.begin();
-	for (; it != timer_list_.end(); ++it)
+	hash_map<uint32, IntervalTimer*>::iterator it = timer_map_.begin();
+	for (; it != timer_map_.end(); ++it)
 	{
 		IntervalTimer* timer = it->second;
 		delete timer;
 		timer = NULL;
 	}
-	timer_list_.clear();
+	timer_map_.clear();
 }
 
 void WorkThread::set_init_handler(init_handler_type init_handler)
@@ -67,18 +67,18 @@ bool WorkThread::Run()
 		for (uint32 n = 0; n < del_timer_list_.size(); n++)
 		{
 			IntervalTimer* timer = del_timer_list_[n];
-			hash_map<uint32, IntervalTimer*>::iterator it = timer_list_.find(timer->get_index());
-			if (it != timer_list_.end())
+			hash_map<uint32, IntervalTimer*>::iterator it = timer_map_.find(timer->get_index());
+			if (it != timer_map_.end())
 			{
-				timer_list_.erase(it);
+				timer_map_.erase(it);
 			}
 			delete timer;
 			timer = NULL;
 		}
 		del_timer_list_.clear();
 
-		hash_map<uint32, IntervalTimer*>::iterator it = timer_list_.begin();
-		for (; it != timer_list_.end(); ++it)
+		hash_map<uint32, IntervalTimer*>::iterator it = timer_map_.begin();
+		for (; it != timer_map_.end(); ++it)
 		{
 			IntervalTimer* timer = it->second;
 			bool ret = timer->Update(getMSTime());
@@ -136,8 +136,8 @@ uint32 WorkThread::MakeGeneralTimerID()
 	uint32 timer_idx = INVALID_INDEX;
 	while (true)
 	{
-		hash_map<uint32, IntervalTimer*>::iterator it = timer_list_.find(auto_timer_idx_);
-		if (it != timer_list_.end())
+		hash_map<uint32, IntervalTimer*>::iterator it = timer_map_.find(auto_timer_idx_);
+		if (it != timer_map_.end())
 		{
 			++timer_idx;
 			if (timer_idx == INVALID_INDEX)
@@ -166,7 +166,7 @@ uint32 WorkThread::add_timer(uint32 interval, HandleInfo handler)
 {
 	uint32 timer_idx = MakeGeneralTimerID();
 	IntervalTimer* timer = new IntervalTimer(timer_idx, getMSTime(), interval, handler);
-	timer_list_.insert(make_pair(timer_idx, timer));
+	timer_map_.insert(make_pair(timer_idx, timer));
 
 	WakeUp();
 
@@ -175,8 +175,8 @@ uint32 WorkThread::add_timer(uint32 interval, HandleInfo handler)
 
 void WorkThread::remove_timer(uint32 index)
 {
-	hash_map<uint32, IntervalTimer*>::iterator it = timer_list_.find(index);
-	if (it != timer_list_.end())
+	hash_map<uint32, IntervalTimer*>::iterator it = timer_map_.find(index);
+	if (it != timer_map_.end())
 	{
 		IntervalTimer* timer = it->second;
 		if (!timer->IsDelete())
@@ -189,8 +189,8 @@ void WorkThread::remove_timer(uint32 index)
 
 void WorkThread::stop_all_timer()
 {
-	hash_map<uint32, IntervalTimer*>::iterator it = timer_list_.begin();
-	for (; it != timer_list_.end(); ++it)
+	hash_map<uint32, IntervalTimer*>::iterator it = timer_map_.begin();
+	for (; it != timer_map_.end(); ++it)
 	{
 		IntervalTimer* timer = it->second;
 		if (!timer->IsDelete())

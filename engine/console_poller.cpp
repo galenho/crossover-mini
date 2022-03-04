@@ -2,6 +2,7 @@
 #include "console_poller.h"
 #include "scheduler.h"
 #include "task.h"
+#include "lua_fix.h"
 
 initialiseSingleton(ConsolePoller);
 ConsolePoller::ConsolePoller()
@@ -13,7 +14,16 @@ ConsolePoller::ConsolePoller()
 
 ConsolePoller::~ConsolePoller()
 {
-	
+	if (handle_console_input_.fun_id > 0)
+	{
+		toluafix_remove_function_by_refid(g_lua_state, handle_console_input_.fun_id);
+	}
+
+	if (handle_console_input_.param_id > 0)
+	{
+		toluafix_remove_param_by_refid(g_lua_state, handle_console_input_.param_id);
+
+	}
 }
 
 void ConsolePoller::set_callback_handler(HandleInfo handle_console_input )

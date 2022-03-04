@@ -42,7 +42,7 @@ private:
 	init_handler_type init_handler_;
 	SafeQueue<Task*> task_list_;
 
-	hash_map<uint32, IntervalTimer*> timer_list_;
+	hash_map<uint32, IntervalTimer*> timer_map_;
 	vector<IntervalTimer*> del_timer_list_;
 
 	uint32 auto_timer_idx_;
