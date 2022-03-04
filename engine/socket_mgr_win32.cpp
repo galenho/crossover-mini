@@ -5,7 +5,7 @@
 #ifdef CONFIG_USE_IOCP
 void HandleConnectComplete(Socket* s, uint32 len, bool is_success)
 {
-	PRINTF_ERROR("HandleConnectComplete fd = %d, conn_idx = %d, status = %d, len = %d", s->GetFd(), s->GetConnectIdx(), s->status_, len);
+	//PRINTF_INFO("HandleConnectComplete fd = %d, conn_idx = %d, status = %d, len = %d", s->GetFd(), s->GetConnectIdx(), s->status_, len);
 
 	if (is_success)
 	{
@@ -35,7 +35,7 @@ void HandleConnectComplete(Socket* s, uint32 len, bool is_success)
 
 void HandleReadComplete(Socket* s, uint32 len, bool is_success)
 {
-	PRINTF_ERROR("HandleReadComplete fd = %d, conn_idx = %d, status = %d, len = %d", s->GetFd(), s->GetConnectIdx(), s->status_, len);
+	//PRINTF_INFO("HandleReadComplete fd = %d, conn_idx = %d, status = %d, len = %d", s->GetFd(), s->GetConnectIdx(), s->status_, len);
 
 	if (s->status_ != socket_status_connectted && s->status_ != socket_status_closing)
 	{
@@ -62,7 +62,6 @@ void HandleReadComplete(Socket* s, uint32 len, bool is_success)
 		}
 		else
 		{
-			PRINTF_ERROR("HandleReadComplete SocketMgr::get_instance()->CloseSocket, fd = %d, conn_idx = %d", s->GetFd(), s->GetConnectIdx());
 			if (s->GetSocketType() == SOCKET_TYPE_TCP)
 			{
 				SocketMgr::get_instance()->CloseSocket(s);
@@ -95,7 +94,7 @@ void HandleReadComplete(Socket* s, uint32 len, bool is_success)
 
 void HandleWriteComplete(Socket* s, uint32 len, bool is_success)
 {
-	PRINTF_ERROR("HandleWriteComplete fd = %d, conn_idx = %d, status = %d", s->GetFd(), s->GetConnectIdx(), s->status_);
+	//PRINTF_INFO("HandleWriteComplete fd = %d, conn_idx = %d, status = %d", s->GetFd(), s->GetConnectIdx(), s->status_);
 
 	if (s->status_ != socket_status_connectted)
 	{
@@ -110,7 +109,7 @@ void HandleWriteComplete(Socket* s, uint32 len, bool is_success)
 
 void HandleClose(Socket* s, uint32 len, bool is_success)
 {
-	PRINTF_ERROR("HandleClose fd = %d, conn_idx = %d, status = %d", s->GetFd(), s->GetConnectIdx(), s->status_);
+	//PRINTF_INFO("HandleClose fd = %d, conn_idx = %d, status = %d", s->GetFd(), s->GetConnectIdx(), s->status_);
 
 	if (s->status_ == socket_status_connectted)
 	{
@@ -121,7 +120,7 @@ void HandleClose(Socket* s, uint32 len, bool is_success)
 
 void HandleDelaySend(Socket* s, uint32 len, bool is_success)
 {
-	PRINTF_ERROR("HandleDelaySend fd = %d, conn_idx = %d, status = %d", s->GetFd(), s->GetConnectIdx(), s->status_);
+	//PRINTF_INFO("HandleDelaySend fd = %d, conn_idx = %d, status = %d", s->GetFd(), s->GetConnectIdx(), s->status_);
 
 	if (s->status_ == socket_status_connectted)
 	{
@@ -133,6 +132,12 @@ void HandleShutdown(Socket* s, uint32 len, bool is_success)
 {
 
 }
+
+void HandleWakeUp(Socket* s, uint32 len, bool is_success)
+{
+
+}
+
 //-------------------------------------------------------------------------------
 initialiseSingleton(SocketMgr);
 SocketMgr::SocketMgr()
@@ -194,83 +199,7 @@ bool SocketMgr::Close()
 	return true;
 }
 
-int SocketMgr::EventLoop(uint32 cur_time)
-{
-	HANDLE cp = completion_port_;
-	DWORD bytes_transferred;
-	Socket* s;
-	OverlappedStruct* ov;
-	LPOVERLAPPED overlapped;
-
-	int ret = 0;
-
-#ifndef _WIN64
-	ret = GetQueuedCompletionStatus(cp, &bytes_transferred, (LPDWORD)&s, &overlapped, INFINITE);
-#else
-	ret = GetQueuedCompletionStatus(cp, &bytes_transferred, (PULONG_PTR)&s, &overlapped, INFINITE);
-#endif
-
-	DWORD last_error = ::GetLastError();
-
-	if (ret)
-	{
-		//(1) 如果函数从完成端口取出一个成功I/O操作的完成包，返回值为非0。
-		//    函数在指向lpNumberOfBytesTransferred, lpCompletionKey, and lpOverlapped的参数中存储相关信息。
-
-		ov = CONTAINING_RECORD(overlapped, OverlappedStruct, overlap_);
-
-		if (s == NULL)
-		{
-			return -1;
-		}
-		//---------------------------------------------------------------------------------
-		if (ov->event_ >= SOCKET_IO_EVENT_CONNECT_COMPLETE && ov->event_ < MAX_SOCKET_IO_EVENTS)
-		{
-			ophandlers[ov->event_](s, bytes_transferred, true);
-		}
-	}
-	else
-	{
-		ov = CONTAINING_RECORD(overlapped, OverlappedStruct, overlap_);
-
-		if (ov == NULL) // 第(2)种情况
-		{
-			//(2) 如果 *lpOverlapped为空并且函数没有从完成端口取出完成包，返回值则为0。
-			//    函数则不会在lpNumberOfBytes and lpCompletionKey所指向的参数中存储信息。
-			//	  调用GetLastError可以得到一个扩展错误信息。如果函数由于等待超时而未能出列完成包，GetLastError返回WAIT_TIMEOUT. 
-
-			return -1;
-		}
-		else
-		{
-			if (s == NULL)
-			{
-				return -1;
-			}
-
-			//---------------------------------------------------------------------------------
-			if (bytes_transferred == 0) // 第(4)种情况
-			{
-				//(4) 如果关联到一个完成端口的一个socket句柄被关闭了，则GetQueuedCompletionStatus返回ERROR_SUCCESS,并且lpNumberOfBytes等于0
-				ophandlers[ov->event_](s, bytes_transferred, false);
-			}
-			else // 第(3)种情况
-			{
-				//(3) 如果 *lpOverlapped不为空并且函数从完成端口出列一个失败I/O操作的完成包，返回值为0。
-				//    函数在指向lpNumberOfBytesTransferred, lpCompletionKey, and lpOverlapped的参数指针中存储相关信息。
-				//    调用GetLastError可以得到扩展错误信息 
-				if (overlapped)
-				{
-					return -1;
-				}
-			}
-		}
-	}
-
-	return 0;
-}
-
-void SocketMgr::Update( uint32 cur_time )
+void SocketMgr::Update(uint32 cur_time)
 {
 	hash_map<uint32, Socket*>::iterator it = socket_map_.begin();
 	for (; it != socket_map_.end(); it++)
@@ -278,6 +207,99 @@ void SocketMgr::Update( uint32 cur_time )
 		Socket* s = it->second;
 		s->Update(cur_time);
 	}
+}
+
+void SocketMgr::EventLoop(int32 timeout)
+{
+	uint32 start_time = getMSTime();
+	Update(start_time);
+
+	HANDLE cp = completion_port_;
+	DWORD bytes_transferred;
+	Socket* s;
+	OverlappedStruct* ov;
+	LPOVERLAPPED overlapped;
+	
+	while (true)
+	{
+		uint32 cur_time = getMSTime();
+
+		uint32 timeout_time = 0;
+		if (timeout - (int32)(cur_time - start_time) > 0)
+		{
+			timeout_time = timeout - (int32)(cur_time - start_time);
+		}
+		
+#ifndef _WIN64
+		int ret = GetQueuedCompletionStatus(cp, &bytes_transferred, (LPDWORD)&s, &overlapped, timeout_time);
+#else
+		int ret = GetQueuedCompletionStatus(cp, &bytes_transferred, (PULONG_PTR)&s, &overlapped, timeout_time);
+#endif
+
+		if (ret)
+		{
+			//(1) 如果函数从完成端口取出一个成功I/O操作的完成包，返回值为非0。
+			//    函数在指向lpNumberOfBytesTransferred, lpCompletionKey, and lpOverlapped的参数中存储相关信息。
+
+			ov = CONTAINING_RECORD(overlapped, OverlappedStruct, overlap_);
+
+			if (s == NULL)
+			{
+				continue;
+			}
+			//---------------------------------------------------------------------------------
+			if (ov->event_ >= SOCKET_IO_EVENT_CONNECT_COMPLETE && ov->event_ < MAX_SOCKET_IO_EVENTS)
+			{
+				ophandlers[ov->event_](s, bytes_transferred, true);
+			}
+		}
+		else
+		{
+			ov = CONTAINING_RECORD(overlapped, OverlappedStruct, overlap_);
+
+			if (ov == NULL) // 第(2)种情况
+			{
+				//(2) 如果 *lpOverlapped为空并且函数没有从完成端口取出完成包，返回值则为0。
+				//    函数则不会在lpNumberOfBytes and lpCompletionKey所指向的参数中存储信息。
+				//	  调用GetLastError可以得到一个扩展错误信息。如果函数由于等待超时而未能出列完成包，GetLastError返回WAIT_TIMEOUT. 
+				DWORD last_error = ::GetLastError();
+				if (last_error == WAIT_TIMEOUT)
+				{
+					break;
+				}
+			}
+			else
+			{
+				if (s == NULL)
+				{
+					continue;
+				}
+
+				//---------------------------------------------------------------------------------
+				if (bytes_transferred == 0) // 第(4)种情况
+				{
+					//(4) 如果关联到一个完成端口的一个socket句柄被关闭了，则GetQueuedCompletionStatus返回ERROR_SUCCESS,并且lpNumberOfBytes等于0
+					ophandlers[ov->event_](s, bytes_transferred, false);
+				}
+				else // 第(3)种情况
+				{
+					//(3) 如果 *lpOverlapped不为空并且函数从完成端口出列一个失败I/O操作的完成包，返回值为0。
+					//    函数在指向lpNumberOfBytesTransferred, lpCompletionKey, and lpOverlapped的参数指针中存储相关信息。
+					//    调用GetLastError可以得到扩展错误信息 
+					if (overlapped)
+					{
+						break;
+					}
+				}
+			}
+		}
+	}
+}
+
+void SocketMgr::WakeUp()
+{
+	OverlappedStruct* ov = new OverlappedStruct(SOCKET_IO_THREAD_WAKEUP);
+	PostQueuedCompletionStatus(completion_port_, 0, (ULONG_PTR)0, &ov->overlap_);
 }
 
 HANDLE SocketMgr::GetCompletionPort()
@@ -555,7 +577,7 @@ bool SocketMgr::Send(uint32 conn_idx, const void* content, uint32 len)
 	{
 		s = it->second;
 	}
-	//--------------------------------------------------------------------------
+	
 	if (s)
 	{
 		bool ret = s->Send(content, len);
@@ -569,15 +591,13 @@ bool SocketMgr::Send(uint32 conn_idx, const void* content, uint32 len)
 
 bool SocketMgr::SendMsg(uint32 conn_idx, const void* content, uint32 len)
 {
-	PRINTF_ERROR("SendMsg, conn_idx = %d", conn_idx);
-
 	Socket* s = NULL;
 	hash_map<uint32, Socket*>::iterator it = socket_map_.find(conn_idx);
 	if (it != socket_map_.end())
 	{
 		s = it->second;
 	}
-	//--------------------------------------------------------------------------
+	
 	if (s)
 	{
 		bool ret = false;
@@ -615,7 +635,7 @@ void SocketMgr::Disconnect(uint32 conn_idx)
 	{
 		s = it->second;
 	}
-	//------------------------------------------------------------------------
+	
 	if (s)
 	{
 		s->Disconnect();

@@ -25,10 +25,11 @@ void HandleClose(Socket* s, uint32 len, bool is_success);
 void HandleDelaySend(Socket* s, uint32 len, bool is_success);
 
 void HandleShutdown(Socket* s, uint32 len, bool is_success);
+void HandleWakeUp(Socket* s, uint32 len, bool is_success);
 
 static OperationHandler ophandlers[MAX_SOCKET_IO_EVENTS] =
 {
-	&HandleConnectComplete, &HandleReadComplete, &HandleWriteComplete, &HandleClose, &HandleDelaySend, &HandleShutdown
+	&HandleConnectComplete, &HandleReadComplete, &HandleWriteComplete, &HandleClose, &HandleDelaySend, &HandleShutdown, &HandleWakeUp
 };
 
 //----------------------------------------------------------------------------
@@ -41,8 +42,9 @@ public:
 	bool Init();
 	bool Close();
 
-	int EventLoop(uint32 cur_time);
 	void Update(uint32 cur_time);
+	void EventLoop(int32 timeout);
+	void WakeUp();
 
 	HANDLE GetCompletionPort();
 

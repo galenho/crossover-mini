@@ -331,9 +331,7 @@ void Socket::Accept(sockaddr_in* address)
 
 void Socket::OnConnect(bool is_success)
 {
-	TcpConnectTask* task = new TcpConnectTask();
-	task->Init(onconnected_handler_, onclose_handler_, onrecv_handler_, conn_idx_, is_success, is_tcp_client_);
-	Scheduler::get_instance()->PushTask(task);
+	TcpConnectTask::process(onconnected_handler_, onclose_handler_, onrecv_handler_, conn_idx_, is_success, is_tcp_client_);
 }
 
 void Socket::OnRead()
@@ -347,10 +345,8 @@ void Socket::OnRead()
 	// 不需要解包
 	if (!is_parse_package_)
 	{
-		TcpReadTask* task = new TcpReadTask();
-		task->Init(onrecv_handler_, conn_idx_, buffer_start, packet_len);
-		Scheduler::get_instance()->PushTask(task);
-
+		TcpReadTask::process(onrecv_handler_, conn_idx_, buffer_start, packet_len);
+		
 		GetReadBuffer().Remove(packet_len);
 		return;
 	}
@@ -437,9 +433,7 @@ void Socket::OnRead()
 			{
 				cursor += 4;
 
-				TcpReadTask* task = new TcpReadTask();
-				task->Init(onrecv_handler_, conn_idx_, buffer_start + cursor, len);
-				Scheduler::get_instance()->PushTask(task);
+				TcpReadTask::process(onrecv_handler_, conn_idx_, buffer_start + cursor, len);
 			}
 
 			cursor += len;
@@ -458,9 +452,7 @@ void Socket::OnRead()
 
 void Socket::OnDisconnect()
 {
-	TcpCloseTask* task = new TcpCloseTask();
-	task->Init(onconnected_handler_, onrecv_handler_, onclose_handler_, conn_idx_, is_tcp_client_);
-	Scheduler::get_instance()->PushTask(task);
+	TcpCloseTask::process(onconnected_handler_, onrecv_handler_, onclose_handler_, conn_idx_, is_tcp_client_);
 }
 
 void Socket::Disconnect()
@@ -559,7 +551,5 @@ int  Socket::udp_input(const char* buf, int len, ikcpcb* kcp, void* user)
 
 void Socket::on_udp_package_recv(const char* buf, int len)
 {
-	TcpReadTask* task = new TcpReadTask();
-	task->Init(onrecv_handler_, conn_idx_, (char*)buf, len);
-	Scheduler::get_instance()->PushTask(task);
+	TcpReadTask::process(onrecv_handler_, conn_idx_, (char*)buf, len);
 }

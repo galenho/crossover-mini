@@ -5,7 +5,6 @@
 
 WorkThread::WorkThread()
 {
-	cur_time_ = getMSTime();
 	auto_timer_idx_ = 1;
 
 	init_handler_ = NULL;
@@ -36,40 +35,34 @@ bool WorkThread::Run()
 	set_name("work thread");
 	Scheduler::get_instance()->add_thread_ref(thread_name_);
 
+	// 初始化网络
+	SocketMgr::get_instance()->Init();
+
 	// 初始化函数
 	if (init_handler_)
 	{
 		init_handler_();
 	}
 
-	SocketMgr::get_instance()->Init();
+	int32  wait_time = 100;									//每帧100ms
+	uint32 next_time = getMSTime() + (uint32)wait_time;		//上一帧的时间点
 
-	uint32 last_time = getMSTime();
-	int32 wait_time = 100; //每帧100ms
 	while (is_running_)
 	{
-		uint32 cur_time_ = getMSTime();
-
-		if ((int32)(cur_time_ - last_time) >= wait_time)
-		{
-			last_time = cur_time_;
-		}
-		else
-		{ 
-			int32 time = (int32)(last_time + wait_time - cur_time_);
-			if (time <= 0)
-			{
-				last_time = cur_time_;
-			}
-			else
-			{
-				event_.Wait(time);
-				last_time = getMSTime();
-			}
-		}
-		
 		//------------------------------------------------------------------------
-		// (1) 处理定时器
+		// (1) 处理消息队列
+		//------------------------------------------------------------------------
+		Task* task = NULL;
+		while (task_list_.pop(task))
+		{
+			task->process();
+
+			delete task;
+			task = NULL;
+		}
+
+		//------------------------------------------------------------------------
+		// (2) 处理定时器
 		//------------------------------------------------------------------------
 		for (uint32 n = 0; n < del_timer_list_.size(); n++)
 		{
@@ -88,7 +81,7 @@ bool WorkThread::Run()
 		for (; it != timer_list_.end(); ++it)
 		{
 			IntervalTimer* timer = it->second;
-			bool ret = timer->Update(cur_time_);
+			bool ret = timer->Update(getMSTime());
 			if (ret)
 			{
 				TimerTask* task = new TimerTask();
@@ -98,22 +91,21 @@ bool WorkThread::Run()
 		}
 
 		//------------------------------------------------------------------------
-		// (2) 处理Socket
+		// (3) 处理Socket
 		//------------------------------------------------------------------------
-		SocketMgr::get_instance()->EventLoop(cur_time_);
-		SocketMgr::get_instance()->Update(cur_time_);
-		
-		//------------------------------------------------------------------------
-		// (3) 处理消息队列
-		//------------------------------------------------------------------------
-		Task* task = NULL;
-		while (task_list_.pop(task))
+		int32 timeout = 0; // 看执行完网络消息逻辑后还需不需要阻塞等待的时间
+		uint32 cur_time = getMSTime();
+		if (next_time > cur_time)
 		{
-			task->process();
-
-			delete task;
-			task = NULL;
+			timeout = next_time - cur_time;
 		}
+
+		SocketMgr::get_instance()->EventLoop(timeout);
+
+		//------------------------------------------------------------------------
+		// (4) 进入下一帧时间
+		//------------------------------------------------------------------------
+		next_time += wait_time;
 	}
 
 	// 线程结束运行
@@ -136,7 +128,7 @@ void WorkThread::PushTask(Task* task)
 
 void WorkThread::WakeUp()
 {
-	event_.Notify();
+	SocketMgr::get_instance()->WakeUp();
 }
 
 uint32 WorkThread::MakeGeneralTimerID()

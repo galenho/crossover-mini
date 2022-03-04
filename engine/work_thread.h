@@ -41,13 +41,10 @@ protected:
 private:
 	init_handler_type init_handler_;
 	SafeQueue<Task*> task_list_;
-	
-	Event event_;
 
 	hash_map<uint32, IntervalTimer*> timer_list_;
 	vector<IntervalTimer*> del_timer_list_;
 
-	uint32 cur_time_;
 	uint32 auto_timer_idx_;
 };
 

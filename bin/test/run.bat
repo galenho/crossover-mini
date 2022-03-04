@@ -1,1 +1,1 @@
-start "server" ..\crossoverD.exe udpserver_test.lua
+start "server" ..\crossoverD.exe tcpserver_test.lua

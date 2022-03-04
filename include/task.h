@@ -89,55 +89,22 @@ public:
 };
 //--------------------------------------------------------------
 
-class TcpConnectTask : public Task
+class TcpConnectTask
 {
 public:
-	TcpConnectTask();
-	virtual ~TcpConnectTask();
-
-	void Init(HandleInfo connect_handle, HandleInfo recv_handle, HandleInfo close_handle, uint32 conn_idx, bool is_success, bool is_tcp_client_);
-	virtual void process();
-
-public:
-	HandleInfo connect_handle_;
-	HandleInfo recv_handle_;
-	HandleInfo close_handle_;
-	uint32 conn_idx_;
-	bool is_success_;
-	bool is_tcp_client_;
+	static void process(HandleInfo connect_handle, HandleInfo recv_handle, HandleInfo close_handle, uint32 conn_idx, bool is_success, bool is_tcp_client_);
 };
 
-class TcpReadTask : public Task
+class TcpReadTask
 {
 public:
-	TcpReadTask();
-	virtual ~TcpReadTask();
-
-	void Init(HandleInfo handle, uint32 conn_idx, char* data, uint32 data_len);
-	virtual void process();
-
-public:
-	HandleInfo handle_;
-	uint32 conn_idx_;
-	char* data_;
-	uint32 data_len_;
+	static void process(HandleInfo handle, uint32 conn_idx, char* data, uint32 data_len);
 };
 
-class TcpCloseTask : public Task
+class TcpCloseTask
 {
 public:
-	TcpCloseTask();
-	virtual ~TcpCloseTask();
-
-	void Init(HandleInfo conn_handle, HandleInfo recv_handle, HandleInfo close_handle, uint32 conn_idx, bool is_tcp_client);
-	virtual void process();
-
-public:
-	HandleInfo connect_handle_;
-	HandleInfo recv_handle_;
-	HandleInfo close_handle_;
-	uint32 conn_idx_;
-	bool is_tcp_client_;
+	static void process(HandleInfo conn_handle, HandleInfo recv_handle, HandleInfo close_handle, uint32 conn_idx, bool is_tcp_client);
 };
 //--------------------------------------------------------------
 

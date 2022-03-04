@@ -161,7 +161,6 @@ int generate_function_id()
 	return function_id;
 }
 
-
 int toluafix_ref_function(lua_State* L, int lo)
 {
 	if (!lua_isfunction(L, lo))
@@ -171,7 +170,6 @@ int toluafix_ref_function(lua_State* L, int lo)
 
 	lua_pushstring(L, TOLUA_REFID_FUNCTION_MAPPING);
 	lua_rawget(L, LUA_REGISTRYINDEX);                           /* stack: fun ... refid_fun */
-
 	lua_pushinteger(L, fun_id);									/* stack: fun ... refid_fun refid */
 	lua_pushvalue(L, lo);                                       /* stack: fun ... refid_fun refid fun */
 	lua_rawset(L, -3);					/* refid_fun[refid] = fun, stack: fun ... refid_ptr */
