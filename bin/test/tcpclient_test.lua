@@ -24,8 +24,8 @@ end
 
 fun_recv = function(conn_idx, data, len)
     -- (2)解码变成Lua表
-	local t = assert(seri.unpack(data, len))
-    --client:send_msg(conn_idx, data, len);
+	--local t = assert(seri.unpack(data, len))
+    client:send_msg(conn_idx, data, len);
 end
 
 for i=1, 1, 1 do

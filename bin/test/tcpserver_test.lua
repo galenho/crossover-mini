@@ -5,10 +5,11 @@ fun_connect = function(conn_idx, is_success)
 end
 
 fun_close = function(conn_idx)
-	print(conn_idx)
+	--print(conn_idx)
 end
 
 fun_recv = function(conn_idx, data, len)
+    print(len)
 	server:send_msg(conn_idx, data, len)
 end
 

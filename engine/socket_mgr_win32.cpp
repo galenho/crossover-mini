@@ -544,8 +544,11 @@ void SocketMgr::RemoveSocket(uint32 conn_idx)
 	if (it != socket_map_.end())
 	{
 		Socket *s = it->second;
-		socket_map_.erase(it);
+		
+		delete s;
+		s = NULL;
 
+		socket_map_.erase(it);
 		//PRINTF_DEBUG("socket count = %d", socket_map_.size());
 	}
 }

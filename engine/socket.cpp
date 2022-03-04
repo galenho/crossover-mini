@@ -7,6 +7,7 @@
 #include "network.h"
 #include "guard.h"
 #include "scheduler.h"
+#include "lua_fix.h"
 
 #ifdef CONFIG_USE_EPOLL
 Socket::Socket( SOCKET wakeup_fd, SocketIOThread* work_thread )
@@ -93,6 +94,39 @@ Socket::Socket(SocketType socket_type,
 Socket::~Socket()
 {
 	//PRINTF_INFO("delete fd = %d, conn_idx = %d", fd_, conn_idx_);
+
+	if (is_tcp_client_)
+	{
+		if (onconnected_handler_.fun_id > 0)
+		{
+			toluafix_remove_function_by_refid(g_lua_state, onconnected_handler_.fun_id);
+		}
+
+		if (onconnected_handler_.param_id > 0)
+		{
+			toluafix_remove_param_by_refid(g_lua_state, onconnected_handler_.param_id);
+		}
+
+		if (onclose_handler_.fun_id > 0)
+		{
+			toluafix_remove_function_by_refid(g_lua_state, onclose_handler_.fun_id);
+		}
+
+		if (onclose_handler_.param_id > 0)
+		{
+			toluafix_remove_param_by_refid(g_lua_state, onclose_handler_.param_id);
+		}
+
+		if (onrecv_handler_.fun_id > 0)
+		{
+			toluafix_remove_function_by_refid(g_lua_state, onrecv_handler_.fun_id);
+		}
+
+		if (onrecv_handler_.param_id > 0)
+		{
+			toluafix_remove_param_by_refid(g_lua_state, onrecv_handler_.param_id);
+		}
+	}
 }
 
 void Socket::AddRef()
