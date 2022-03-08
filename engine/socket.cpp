@@ -98,39 +98,6 @@ Socket::~Socket()
 	{
 		SocketClientDeleteTask::process(onconnected_handler_, onrecv_handler_, onclose_handler_);
 	}
-
-	if (is_client_)
-	{
-		if (onconnected_handler_.fun_id > 0)
-		{
-			toluafix_remove_function_by_refid(g_lua_state, onconnected_handler_.fun_id);
-		}
-
-		if (onconnected_handler_.param_id > 0)
-		{
-			toluafix_remove_param_by_refid(g_lua_state, onconnected_handler_.param_id);
-		}
-
-		if (onclose_handler_.fun_id > 0)
-		{
-			toluafix_remove_function_by_refid(g_lua_state, onclose_handler_.fun_id);
-		}
-
-		if (onclose_handler_.param_id > 0)
-		{
-			toluafix_remove_param_by_refid(g_lua_state, onclose_handler_.param_id);
-		}
-
-		if (onrecv_handler_.fun_id > 0)
-		{
-			toluafix_remove_function_by_refid(g_lua_state, onrecv_handler_.fun_id);
-		}
-
-		if (onrecv_handler_.param_id > 0)
-		{
-			toluafix_remove_param_by_refid(g_lua_state, onrecv_handler_.param_id);
-		}
-	}
 }
 
 void Socket::AddRef()

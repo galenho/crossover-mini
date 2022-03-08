@@ -1,4 +1,4 @@
-# crossover
+# crossover-mini
 
         一个跨平台的lua游戏服务器开发框架，该框架采用多线程并发来处理消息，开发者只需要调用相应的接口函数并绑定相应的回调
 	函数即可，在逻辑层表现为单线程的开发模式，使开发者易用，易调试，易维护，易扩展，同时拥有快速的响应能力。
@@ -54,3 +54,10 @@
 		(2) centos 7.6
 			cd test
 			../crossover hello_world.lua
+
+
+	四、对crossover进行简化改造
+	
+		1. 去掉IOThread, 把网络和WorkThread合并，即网络和逻辑线程是同步操作，去掉网络层的锁
+		2. 把Socket监听线程去掉, 把它合并到IOCP/Epoll中
+
