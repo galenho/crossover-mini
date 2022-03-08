@@ -12,7 +12,7 @@
 #ifdef CONFIG_USE_EPOLL
 Socket::Socket( SOCKET wakeup_fd, SocketIOThread* work_thread )
 {
-	is_tcp_client_ = false;
+	is_client_ = false;
 	fd_ = wakeup_fd;
 	work_thread_ = work_thread;
 }
@@ -32,11 +32,11 @@ Socket::Socket(SocketType socket_type,
 
 	if (fd == 0) //说明是TcpClient连接
 	{
-		is_tcp_client_ = true;
+		is_client_ = true;
 	}
 	else //说明是TcpServer连接
 	{
-		is_tcp_client_ = false;
+		is_client_ = false;
 	}
 
 	is_parse_package_ = is_parse_package;
@@ -94,8 +94,12 @@ Socket::Socket(SocketType socket_type,
 Socket::~Socket()
 {
 	//PRINTF_INFO("delete fd = %d, conn_idx = %d", fd_, conn_idx_);
+	if (is_client_)
+	{
+		SocketClientDeleteTask::process(onconnected_handler_, onrecv_handler_, onclose_handler_);
+	}
 
-	if (is_tcp_client_)
+	if (is_client_)
 	{
 		if (onconnected_handler_.fun_id > 0)
 		{
@@ -365,7 +369,7 @@ void Socket::Accept(sockaddr_in* address)
 
 void Socket::OnConnect(bool is_success)
 {
-	TcpConnectTask::process(onconnected_handler_, onclose_handler_, onrecv_handler_, conn_idx_, is_success, is_tcp_client_);
+	SocketConnectTask::process(onconnected_handler_, conn_idx_, is_success);
 }
 
 void Socket::OnRead()
@@ -379,7 +383,7 @@ void Socket::OnRead()
 	// 不需要解包
 	if (!is_parse_package_)
 	{
-		TcpReadTask::process(onrecv_handler_, conn_idx_, buffer_start, packet_len);
+		SocketReadTask::process(onrecv_handler_, conn_idx_, buffer_start, packet_len);
 		
 		GetReadBuffer().Remove(packet_len);
 		return;
@@ -467,7 +471,7 @@ void Socket::OnRead()
 			{
 				cursor += 4;
 
-				TcpReadTask::process(onrecv_handler_, conn_idx_, buffer_start + cursor, len);
+				SocketReadTask::process(onrecv_handler_, conn_idx_, buffer_start + cursor, len);
 			}
 
 			cursor += len;
@@ -486,7 +490,7 @@ void Socket::OnRead()
 
 void Socket::OnDisconnect()
 {
-	TcpCloseTask::process(onconnected_handler_, onrecv_handler_, onclose_handler_, conn_idx_, is_tcp_client_);
+	SocketCloseTask::process(onconnected_handler_, conn_idx_);
 }
 
 void Socket::Disconnect()
@@ -585,5 +589,5 @@ int  Socket::udp_input(const char* buf, int len, ikcpcb* kcp, void* user)
 
 void Socket::on_udp_package_recv(const char* buf, int len)
 {
-	TcpReadTask::process(onrecv_handler_, conn_idx_, (char*)buf, len);
+	SocketReadTask::process(onrecv_handler_, conn_idx_, (char*)buf, len);
 }

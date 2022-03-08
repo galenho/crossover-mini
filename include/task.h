@@ -12,6 +12,37 @@
 #include "database_defines.h"
 #include "mongo_task.h"
 
+class TimerTask
+{
+public:
+	static void process(HandleInfo handle, uint32 index);
+	static void DeleteTimer(HandleInfo handle, uint32 index);
+};
+
+class SocketConnectTask
+{
+public:
+	static void process(HandleInfo connect_handle, uint32 conn_idx, bool is_success);
+};
+
+class SocketReadTask
+{
+public:
+	static void process(HandleInfo recv_handle, uint32 conn_idx, char* data, uint32 data_len);
+};
+
+class SocketCloseTask
+{
+public:
+	static void process(HandleInfo close_handle, uint32 conn_idx);
+};
+
+class SocketClientDeleteTask
+{
+public:
+	static void process(HandleInfo connect_handle, HandleInfo recv_handle, HandleInfo close_handle);
+};
+//--------------------------------------------------------------
 class Task
 {
 public:
@@ -21,24 +52,6 @@ public:
 public:
 	virtual void process() = 0;
 };
-
-//--------------------------------------------------------------
-
-class TimerTask : public Task
-{
-public:
-	TimerTask();
-	virtual ~TimerTask();
-
-	void Init(HandleInfo handle, uint32 index);
-
-	virtual void process();
-
-public:
-	HandleInfo handle_;
-	uint32 index_;
-};
-//--------------------------------------------------------------
 
 class InputTask : public Task
 {
@@ -87,25 +100,7 @@ public:
 	MongoResultSet* rs_;
 	bool is_one_table_;
 };
-//--------------------------------------------------------------
 
-class TcpConnectTask
-{
-public:
-	static void process(HandleInfo connect_handle, HandleInfo recv_handle, HandleInfo close_handle, uint32 conn_idx, bool is_success, bool is_tcp_client_);
-};
-
-class TcpReadTask
-{
-public:
-	static void process(HandleInfo handle, uint32 conn_idx, char* data, uint32 data_len);
-};
-
-class TcpCloseTask
-{
-public:
-	static void process(HandleInfo conn_handle, HandleInfo recv_handle, HandleInfo close_handle, uint32 conn_idx, bool is_tcp_client);
-};
 //--------------------------------------------------------------
 
 class HttpTask : public Task

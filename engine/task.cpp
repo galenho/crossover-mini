@@ -19,6 +19,131 @@ void LuaCall(lua_State* L, int nargs)
 	//stack_dump(L);
 }
 
+void TimerTask::process(HandleInfo handle, uint32 index)
+{
+	if (handle.fun_id > 0)
+	{
+		toluafix_get_function_by_refid(g_lua_state, handle.fun_id);
+		lua_pushinteger(g_lua_state, index);
+
+		if (handle.param_id > 0)
+		{
+			toluafix_get_param_by_refid(g_lua_state, handle.param_id);
+			LuaCall(g_lua_state, 2);
+		}
+		else
+		{
+			LuaCall(g_lua_state, 1);
+		}
+	}
+}
+
+void TimerTask::DeleteTimer(HandleInfo handle, uint32 index)
+{
+	if (handle.fun_id > 0)
+	{
+		toluafix_remove_function_by_refid(g_lua_state, handle.fun_id);
+	}
+
+	if (handle.param_id > 0)
+	{
+		toluafix_remove_param_by_refid(g_lua_state, handle.param_id);
+	}
+}
+
+void SocketConnectTask::process(HandleInfo connect_handle, uint32 conn_idx, bool is_success)
+{
+	if (connect_handle.fun_id > 0)
+	{
+		toluafix_get_function_by_refid(g_lua_state, connect_handle.fun_id);
+		lua_pushinteger(g_lua_state, conn_idx);
+		lua_pushboolean(g_lua_state, is_success);
+
+		if (connect_handle.param_id > 0)
+		{
+			toluafix_get_param_by_refid(g_lua_state, connect_handle.param_id);
+			LuaCall(g_lua_state, 3);
+		}
+		else
+		{
+			LuaCall(g_lua_state, 2);
+		}
+	}
+}
+
+void SocketReadTask::process(HandleInfo recv_handle, uint32 conn_idx, char* data, uint32 data_len)
+{
+	if (recv_handle.fun_id > 0)
+	{
+		toluafix_get_function_by_refid(g_lua_state, recv_handle.fun_id);
+		lua_pushinteger(g_lua_state, conn_idx);
+		lua_pushlstring(g_lua_state, data, data_len);
+		lua_pushinteger(g_lua_state, data_len);
+
+		if (recv_handle.param_id > 0)
+		{
+			toluafix_get_param_by_refid(g_lua_state, recv_handle.param_id);
+			LuaCall(g_lua_state, 4);
+		}
+		else
+		{
+			LuaCall(g_lua_state, 3);
+		}
+	}
+}
+
+void SocketCloseTask::process(HandleInfo close_handle, uint32 conn_idx)
+{
+	if (close_handle.fun_id > 0)
+	{
+		toluafix_get_function_by_refid(g_lua_state, close_handle.fun_id);
+		lua_pushinteger(g_lua_state, conn_idx);
+
+		if (close_handle.param_id > 0)
+		{
+			toluafix_get_param_by_refid(g_lua_state, close_handle.param_id);
+			LuaCall(g_lua_state, 2);
+		}
+		else
+		{
+			LuaCall(g_lua_state, 1);
+		}
+	}
+}
+
+void SocketClientDeleteTask::process(HandleInfo connect_handle, HandleInfo recv_handle, HandleInfo close_handle)
+{
+	if (connect_handle.fun_id > 0)
+	{
+		toluafix_remove_function_by_refid(g_lua_state, connect_handle.fun_id);
+	}
+
+	if (connect_handle.param_id > 0)
+	{
+		toluafix_remove_param_by_refid(g_lua_state, connect_handle.param_id);
+	}
+
+	if (recv_handle.fun_id > 0)
+	{
+		toluafix_remove_function_by_refid(g_lua_state, recv_handle.fun_id);
+	}
+
+	if (recv_handle.param_id > 0)
+	{
+		toluafix_remove_param_by_refid(g_lua_state, recv_handle.param_id);
+	}
+
+	if (close_handle.fun_id > 0)
+	{
+		toluafix_remove_function_by_refid(g_lua_state, close_handle.fun_id);
+	}
+
+	if (close_handle.param_id > 0)
+	{
+		toluafix_remove_param_by_refid(g_lua_state, close_handle.param_id);
+	}
+}
+
 Task::Task()
 {
 	
@@ -27,41 +152,6 @@ Task::Task()
 Task::~Task()
 {
 	
-}
-
-TimerTask::TimerTask()
-{
-	index_ = 0;
-}
-
-TimerTask::~TimerTask()
-{
-	
-}
-
-void TimerTask::Init(HandleInfo handle, uint32 index)
-{
-	handle_ = handle;
-	index_ = index;
-}
-
-void TimerTask::process()
-{
-	if (handle_.fun_id > 0)
-	{
-		toluafix_get_function_by_refid(g_lua_state, handle_.fun_id);
-		lua_pushinteger(g_lua_state, index_);
-
-		if (handle_.param_id > 0)
-		{
-			toluafix_get_param_by_refid(g_lua_state, handle_.param_id);
-			LuaCall(g_lua_state, 2);
-		}
-		else
-		{
-			LuaCall(g_lua_state, 1);
-		}
-	}
 }
 
 InputTask::InputTask()
@@ -229,66 +319,6 @@ void MongoDBTask::process()
 		else
 		{
 			LuaCall(g_lua_state, 2);
-		}
-	}
-}
-
-void TcpConnectTask::process(HandleInfo connect_handle, HandleInfo recv_handle, HandleInfo close_handle, uint32 conn_idx, bool is_success, bool is_tcp_client)
-{
-	if (connect_handle.fun_id > 0)
-	{
-		toluafix_get_function_by_refid(g_lua_state, connect_handle.fun_id);
-		lua_pushinteger(g_lua_state, conn_idx);
-		lua_pushboolean(g_lua_state, is_success);
-
-		if (connect_handle.param_id > 0)
-		{
-			toluafix_get_param_by_refid(g_lua_state, connect_handle.param_id);
-			LuaCall(g_lua_state, 3);
-		}
-		else
-		{
-			LuaCall(g_lua_state, 2);
-		}
-	}
-}
-
-void TcpReadTask::process(HandleInfo handle, uint32 conn_idx, char* data, uint32 data_len)
-{
-	if (handle.fun_id > 0)
-	{
-		toluafix_get_function_by_refid(g_lua_state, handle.fun_id);
-		lua_pushinteger(g_lua_state, conn_idx);
-		lua_pushlstring(g_lua_state, data, data_len);
-		lua_pushinteger(g_lua_state, data_len);
-
-		if (handle.param_id > 0)
-		{
-			toluafix_get_param_by_refid(g_lua_state, handle.param_id);
-			LuaCall(g_lua_state, 4);
-		}
-		else
-		{
-			LuaCall(g_lua_state, 3);
-		}
-	}
-}
-
-void TcpCloseTask::process(HandleInfo connect_handle, HandleInfo recv_handle, HandleInfo close_handle, uint32 conn_idx, bool is_tcp_client)
-{
-	if (close_handle.fun_id > 0)
-	{
-		toluafix_get_function_by_refid(g_lua_state, close_handle.fun_id);
-		lua_pushinteger(g_lua_state, conn_idx);
-
-		if (close_handle.param_id > 0)
-		{
-			toluafix_get_param_by_refid(g_lua_state, close_handle.param_id);
-			LuaCall(g_lua_state, 2);
-		}
-		else
-		{
-			LuaCall(g_lua_state, 1);
 		}
 	}
 }

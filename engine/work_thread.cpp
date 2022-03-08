@@ -81,12 +81,15 @@ bool WorkThread::Run()
 		for (; it != timer_map_.end(); ++it)
 		{
 			IntervalTimer* timer = it->second;
+			if (timer->IsDelete())
+			{
+				continue;
+			}
+
 			bool ret = timer->Update(getMSTime());
 			if (ret)
 			{
-				TimerTask* task = new TimerTask();
-				task->Init(timer->handler_, timer->index_);
-				PushTask(task);
+				TimerTask::process(timer->handler_, timer->index_);
 			}
 		}
 
