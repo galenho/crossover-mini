@@ -23,11 +23,6 @@ void Scheduler::set_log(CLog* log)
 	log_ = log;
 }
 
-void Scheduler::set_io_thread_count(uint32 thread_count)
-{
-	imp_->set_io_thread_count(thread_count);
-}
-
 bool Scheduler::startup(init_handler_type init_handler)
 {
 	return imp_->startup(init_handler);

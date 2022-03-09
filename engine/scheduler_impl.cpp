@@ -5,8 +5,6 @@
 
 Scheduler_impl::Scheduler_impl()
 {
-	io_thread_count_ = 0;
-
 	work_thread_ = NULL;
 }
 
@@ -19,11 +17,6 @@ Scheduler_impl::~Scheduler_impl()
 	}
 }
 
-void Scheduler_impl::set_io_thread_count(uint32 thread_count)
-{
-	io_thread_count_ = thread_count;
-}
-
 bool Scheduler_impl::startup(init_handler_type init_handler)
 {
 	// 激活工作线程
@@ -31,15 +24,13 @@ bool Scheduler_impl::startup(init_handler_type init_handler)
 	work_thread_->set_init_handler(init_handler);
 	work_thread_->Activate();
 
+
 	return true;
 }
 
 bool Scheduler_impl::shutdown()
 {
-	if (io_thread_count_ > 0)
-	{
-		SocketMgr::get_instance()->Close();
-	}
+	SocketMgr::get_instance()->Close();
 
 	work_thread_->Shutdown();
 
@@ -49,10 +40,7 @@ bool Scheduler_impl::shutdown()
 void Scheduler_impl::CleanupNetwork()
 {
 #ifdef WIN32
-	if (io_thread_count_ > 0)
-	{
-		WSACleanup();
-	}
+	WSACleanup();
 #endif
 }
 

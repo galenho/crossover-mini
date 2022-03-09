@@ -12,7 +12,6 @@
 std::string g_log_file;
 int g_log_level = 0;
 
-int g_io_thread_count = 0;
 std::string g_lua_file;
 
 
@@ -133,10 +132,6 @@ bool LoadXML()
 		ASSERT(log_file_emt);
 		g_log_file = log_file_emt->GetText();
 
-		TiXmlElement* io_thread_count_emt = root_emt->FirstChildElement("io_thread_count");
-		ASSERT(io_thread_count_emt);
-		g_io_thread_count = atoi(io_thread_count_emt->GetText());
-
 		TiXmlElement* lua_file_emt = root_emt->FirstChildElement("lua_file");
 		ASSERT(lua_file_emt);
 		g_lua_file = lua_file_emt->GetText();
@@ -164,7 +159,6 @@ int main(int argc, char* argv[])
 	g_logger->Start();
 
 	Scheduler::get_instance()->set_log(g_logger);
-	Scheduler::get_instance()->set_io_thread_count(g_io_thread_count);
 	Scheduler::get_instance()->startup(bind(&Init));
 
 	ConsolePoller::get_instance()->Activate();

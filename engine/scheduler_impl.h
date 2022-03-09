@@ -19,8 +19,6 @@ public:
 	Scheduler_impl();
 	virtual ~Scheduler_impl();
 
-	void set_io_thread_count(uint32 thread_count);
-
 	bool startup(init_handler_type init_handler);
 	bool shutdown();
 
@@ -39,8 +37,6 @@ public:
 	void PrintThreadInfos();
 
 private:
-	uint32 io_thread_count_;
-
 	WorkThread*	work_thread_;
 	
 	Mutex thread_count_lock_;
