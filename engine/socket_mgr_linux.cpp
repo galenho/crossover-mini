@@ -285,7 +285,7 @@ uint32 SocketMgr::MakeGeneralConnID()
 
 int SocketMgr::GetEpollFd()
 {
-	return epoll_fd;
+	return epoll_fd_;
 }
 
 void SocketMgr::HandleDelayEvent()
@@ -437,7 +437,8 @@ void SocketMgr::Accept( SOCKET aSocket,
 	ev.events = ev.events | EPOLLERR | EPOLLHUP | EPOLLPRI| EPOLLET;
 	ev.data.ptr = s;
 
-	if (epoll_ctl(s->work_thread_->GetEpollFd(), EPOLL_CTL_ADD, aSocket, &ev))
+	int epoll_fd = SocketMgr::get_instance()->GetEpollFd();
+	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, aSocket, &ev))
 	{
 		PRINTF_ERROR("epoll", "Could not add event to epoll set on fd %u ", s->GetFd());
 		
@@ -490,7 +491,8 @@ uint32 SocketMgr::Connect(const string& ip, uint16 port,
 		ev.events = ev.events | EPOLLERR | EPOLLHUP | EPOLLPRI | EPOLLET; 
 		ev.data.ptr = s;
 
-		if (epoll_ctl(s->work_thread_->GetEpollFd(), EPOLL_CTL_ADD, s->GetFd(), &ev))
+		int epoll_fd = SocketMgr::get_instance()->GetEpollFd();
+		if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, s->GetFd(), &ev))
 		{
 			PRINTF_ERROR("Could not add event to epoll set on fd %u", s->GetFd());
 		}
@@ -533,7 +535,8 @@ uint32 SocketMgr::ConnectEx( const string& ip, uint16 port,
 		ev.events = ev.events | EPOLLERR | EPOLLHUP | EPOLLPRI | EPOLLET; 
 		ev.data.ptr = s;
 
-		if (epoll_ctl(s->work_thread_->GetEpollFd(), EPOLL_CTL_ADD, s->GetFd(), &ev))
+		int epoll_fd = SocketMgr::get_instance()->GetEpollFd();
+		if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, s->GetFd(), &ev))
 		{
 			PRINTF_ERROR("Could not add event to epoll set on fd %u", s->GetFd());
 		}
@@ -588,7 +591,8 @@ uint32 SocketMgr::ConnectUDP(const string& ip, uint16 port, uint16& local_port,
 		ev.events = ev.events | EPOLLERR | EPOLLHUP | EPOLLPRI | EPOLLET;
 		ev.data.ptr = s;
 
-		if (epoll_ctl(s->work_thread_->GetEpollFd(), EPOLL_CTL_ADD, s->GetFd(), &ev))
+		int epoll_fd = SocketMgr::get_instance()->GetEpollFd();
+		if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, s->GetFd(), &ev))
 		{
 			PRINTF_ERROR("Could not add event to epoll set on fd %u", s->GetFd());
 
@@ -672,7 +676,8 @@ void SocketMgr::RemoveSocket(uint32 conn_idx)
 		Socket *s = it->second;
 		//--------------------------------------------------------------------------------------------
 		epoll_event ev = { 0, { 0 } };
-		if (epoll_ctl(s->work_thread_->GetEpollFd(), EPOLL_CTL_DEL, s->GetFd(), &ev))
+		int epoll_fd = SocketMgr::get_instance()->GetEpollFd();
+		if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, s->GetFd(), &ev))
 		{
 			PRINTF_ERROR("RemoveSocket Could not remove fd %u from epoll set, errno %u", conn_idx, errno);
 		}
