@@ -187,7 +187,7 @@ SocketMgr::~SocketMgr()
 	
 }
 
-bool SocketMgr::Init(uint32 thread_count)
+bool SocketMgr::Init()
 {
 	epoll_fd_ = epoll_create(SOCKET_HOLDER_SIZE);
 

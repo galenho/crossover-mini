@@ -34,8 +34,6 @@ public:
 	void remove_timer(uint32 index);
 	void stop_all_timer();
 
-	void set_io_thread_count(uint32 thread_count);
-
 	bool startup(init_handler_type init_handler);
 	bool shutdown();
 

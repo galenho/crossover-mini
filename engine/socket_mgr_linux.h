@@ -45,7 +45,7 @@ public:
 	uint32 MakeGeneralConnID();
 	int GetEpollFd();
 
-	bool Init(uint32 thread_count);
+	bool Init();
 	bool Close();
 
 	void WakeUp();
