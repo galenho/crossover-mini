@@ -58,6 +58,6 @@
 
 	四、对crossover进行简化改造
 	
-		1. 去掉IOThread, 把网络和WorkThread合并，即网络和逻辑线程是同步操作，去掉网络层的锁
-		2. 把Socket监听线程去掉, 把它合并到IOCP/Epoll中
+		1. 去掉IOThread, 把网络和WorkThread合并，即网络和逻辑线程是同步操作，去掉网络层的锁 (已完成)
+		2. 把Socket监听线程去掉, 把它合并到IOCP/Epoll中  (未完成)
 
