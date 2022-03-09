@@ -267,6 +267,10 @@ void SocketMgr::EventLoop(int32 timeout)
 				{
 					break;
 				}
+				else
+				{
+					break;
+				}
 			}
 			else
 			{

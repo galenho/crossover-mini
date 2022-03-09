@@ -306,78 +306,93 @@ void SocketMgr::HandleDelayEvent()
 	}
 }
 
-int SocketMgr::EventLoop(uint32 cur_time)
+int SocketMgr::EventLoop(int32 timeout)
 {
-	int32 fd_count = epoll_wait(epoll_fd, events, THREAD_EVENT_SIZE, -1);
+	uint32 start_time = getMSTime();
+	Update(start_time);
 
-	//PRINTF_INFO("epoll_fd = %d , epoll_wait fd_count = %d", epoll_fd, fd_count);
-	//PRINTF_INFO("---------------------------------------------------");
+	while (true)
+	{
+		uint32 cur_time = getMSTime();
 
-	if (fd_count == 0) // 定时器
-	{
-		return 0;
-	}
-	else if (fd_count > 0)
-	{
-		for (int i = 0; i < fd_count; i++)
+		uint32 timeout_time = 0;
+		if (timeout - (int32)(cur_time - start_time) > 0)
 		{
-			uint32 event = events[i].events;
-			Socket* s = (Socket*)(events[i].data.ptr);
+			timeout_time = timeout - (int32)(cur_time - start_time);
+		}
 
-			//PRINTF_INFO("epoll_wait fd = %d, events = %d", s->GetFd(), events[i].events);
+		int32 fd_count = epoll_wait(epoll_fd, events, THREAD_EVENT_SIZE, timeout_time);
 
-			if (s == wakeup_s_) //唤醒事件
+		//PRINTF_INFO("epoll_fd = %d , epoll_wait fd_count = %d", epoll_fd, fd_count);
+		//PRINTF_INFO("---------------------------------------------------");
+
+		if (fd_count == 0) // 定时器
+		{
+			break;
+		}
+		else if (fd_count > 0)
+		{
+			for (int i = 0; i < fd_count; i++)
 			{
-				if (event & EPOLLIN)
+				uint32 event = events[i].events;
+				Socket* s = (Socket*)(events[i].data.ptr);
+
+				//PRINTF_INFO("epoll_wait fd = %d, events = %d", s->GetFd(), events[i].events);
+
+				if (s == wakeup_s_) //唤醒事件
 				{
-					uint64 one = 1;
-					uint32 size = read(wakeup_s_->GetFd(), &one, sizeof(one));
-					if (size == sizeof(one))
+					if (event & EPOLLIN)
 					{
-						HandleDelayEvent();
+						uint64 one = 1;
+						uint32 size = read(wakeup_s_->GetFd(), &one, sizeof(one));
+						if (size == sizeof(one))
+						{
+							HandleDelayEvent();
+						}
 					}
-				}
 
-				continue;
-			}
-			//------------------------------------------------------------
-			if (event & EPOLLHUP || event & EPOLLERR)
-			{
-				if (s->status_ == socket_status_connecting)
-				{
-					HandleConnect(s, false);
+					continue;
 				}
-				else
-				{
-					SocketMgr::get_instance()->CloseSocket(s);
-				}
-			}
-			else
-			{
-				if (event & EPOLLIN)
-				{
-					HandleReadComplete(s);
-				}
-
-				if (event & EPOLLOUT)
+				//------------------------------------------------------------
+				if (event & EPOLLHUP || event & EPOLLERR)
 				{
 					if (s->status_ == socket_status_connecting)
 					{
-						HandleConnect(s, true);
+						HandleConnect(s, false);
 					}
 					else
 					{
-						HandleCanWrite(s);
+						SocketMgr::get_instance()->CloseSocket(s);
+					}
+				}
+				else
+				{
+					if (event & EPOLLIN)
+					{
+						HandleReadComplete(s);
+					}
+
+					if (event & EPOLLOUT)
+					{
+						if (s->status_ == socket_status_connecting)
+						{
+							HandleConnect(s, true);
+						}
+						else
+						{
+							HandleCanWrite(s);
+						}
 					}
 				}
 			}
 		}
+		else
+		{
+			// 有错误
+			break;
+		}
 	}
-	else
-	{
-		// 有错误
-	}
-
+	
 	return 0;
 }
 

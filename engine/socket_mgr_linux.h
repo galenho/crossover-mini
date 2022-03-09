@@ -51,7 +51,7 @@ public:
 	void WakeUp();
 
 	void HandleDelayEvent();
-	int  EventLoop(uint32 cur_time);
+	int  EventLoop(int32 timeout);
 	void Update(uint32 cur_time);
 
 	void Accept( SOCKET aSocket, 

@@ -291,7 +291,7 @@ int lua_array_length(lua_State* L, int index)
 			return false;
 		}
 		
-		arr_index = lua_tonumber(L, -2);
+		arr_index = (int)lua_tonumber(L, -2);
 		lua_pop(L, 1);
 		if (arr_index != num_keys + 1) 
 		{
