@@ -210,7 +210,7 @@ bool SocketMgr::Init(uint32 thread_count)
 		return false;
 	}
 
-	wakeup_s_ = new Socket(wakeup_fd, this);
+	wakeup_s_ = new Socket(wakeup_fd);
 
 	struct epoll_event event;
 	memset(&event, 0, sizeof(event));

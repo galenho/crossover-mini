@@ -33,7 +33,7 @@ class Socket
 {
 public:
 #ifdef CONFIG_USE_EPOLL
-	Socket( SOCKET wakeup_fd, SocketIOThread* work_thread );
+	Socket( SOCKET wakeup_fd );
 #endif
 
 	Socket( SocketType socket_type,

@@ -10,11 +10,10 @@
 #include "lua_fix.h"
 
 #ifdef CONFIG_USE_EPOLL
-Socket::Socket( SOCKET wakeup_fd, SocketIOThread* work_thread )
+Socket::Socket( SOCKET wakeup_fd )
 {
 	is_client_ = false;
 	fd_ = wakeup_fd;
-	work_thread_ = work_thread;
 }
 #endif
 
