@@ -97,7 +97,8 @@ public:
 		int fail_times = 0;
 		while (is_running_)
 		{
-			SOCKET aSocket = accept(socket_, (sockaddr *)&tempAddress_, (socklen_t *)&len);
+			struct sockaddr_in tempAddress;
+			SOCKET aSocket = accept(socket_, (sockaddr *)&tempAddress, (socklen_t *)&len);
 			if (aSocket == -1)
 			{
 				if (fail_times < 3)
@@ -117,7 +118,7 @@ public:
 				fail_times = 0;
 
 				SocketMgr::get_instance()->Accept(aSocket, 
-					tempAddress_,
+					tempAddress,
 					onconnected_handler_,
 					onclose_handler_,
 					onrecv_handler_,
@@ -140,7 +141,6 @@ public:
 private:
 	SOCKET socket_;
 	struct sockaddr_in address_;
-	struct sockaddr_in tempAddress_;
 	uint32 len;
 
 	uint32 sendbuffersize_;

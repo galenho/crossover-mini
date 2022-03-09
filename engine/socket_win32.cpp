@@ -24,6 +24,8 @@ bool Socket::SetupReadEvent()
 		}
 	}
 
+	REF_ADD(this); //引用一次
+
 	return true;
 }
 
@@ -58,6 +60,8 @@ bool Socket::WriteCallback()
 				return false;
 			}
 		}
+
+		REF_ADD(this); //引用一次
 	}
 	else
 	{

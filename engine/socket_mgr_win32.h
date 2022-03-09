@@ -18,6 +18,7 @@ class Socket;
 //----------------------------------------------------------------------------
 typedef void(*OperationHandler)(Socket* s, uint32 len, bool is_success);
 
+void HandleAcceptComplete(Socket* s, uint32 len, bool is_success);
 void HandleConnectComplete(Socket* s, uint32 len, bool is_success);
 void HandleReadComplete(Socket* s, uint32 len, bool is_success);
 void HandleWriteComplete(Socket* s, uint32 len, bool is_success);
@@ -29,7 +30,7 @@ void HandleWakeUp(Socket* s, uint32 len, bool is_success);
 
 static OperationHandler ophandlers[MAX_SOCKET_IO_EVENTS] =
 {
-	&HandleConnectComplete, &HandleReadComplete, &HandleWriteComplete, &HandleClose, &HandleDelaySend, &HandleShutdown, &HandleWakeUp
+	&HandleAcceptComplete, &HandleConnectComplete, &HandleReadComplete, &HandleWriteComplete, &HandleClose, &HandleDelaySend, &HandleShutdown, &HandleWakeUp
 };
 
 //----------------------------------------------------------------------------

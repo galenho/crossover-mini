@@ -58,8 +58,6 @@ bool Socket::WriteCallback()
 		}
 		else
 		{
-			//PRINTF_INFO("conn_idx = %d, send success, len = %d" , GetConnectIdx(), bytes_written);
-
 			writeBuffer.Remove(bytes_written); //Remove函数里边会自动FillVector()
 			
 			if (bytes_written < send_len)

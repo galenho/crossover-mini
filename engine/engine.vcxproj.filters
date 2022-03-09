@@ -186,6 +186,21 @@
     <ClCompile Include="timer.cpp">
       <Filter>util</Filter>
     </ClCompile>
+    <ClCompile Include="referable.cpp">
+      <Filter>util</Filter>
+    </ClCompile>
+    <ClCompile Include="tcp_listen_socket_win32.cpp">
+      <Filter>network\system\iocp</Filter>
+    </ClCompile>
+    <ClCompile Include="udp_listen_socket_win32.cpp">
+      <Filter>network\system\iocp</Filter>
+    </ClCompile>
+    <ClCompile Include="tcp_listen_socket_linux.cpp">
+      <Filter>network\system\epoll</Filter>
+    </ClCompile>
+    <ClCompile Include="udp_listen_socket_linux.cpp">
+      <Filter>network\system\epoll</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="tcp_client_impl.h">
@@ -334,6 +349,9 @@
       <Filter>network\system\iocp</Filter>
     </ClInclude>
     <ClInclude Include="ikcp.h">
+      <Filter>util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\referable.h">
       <Filter>util</Filter>
     </ClInclude>
   </ItemGroup>

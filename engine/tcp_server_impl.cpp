@@ -32,8 +32,7 @@ bool TCPServer_impl::Start(const string& ip,
 		recvbuffersize,
 		is_parse_package);
 
-	listen_socket_->set_name("TCPServer thread");
-	listen_socket_->Activate();
+	listen_socket_->Start();
 	return true;
 }
 

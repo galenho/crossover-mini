@@ -144,7 +144,6 @@ public:
 private:
 	SOCKET socket_;
 	struct sockaddr_in address_;
-	struct sockaddr_in tempAddress_;
 	uint32 len;
 
 	uint32 sendbuffersize_;

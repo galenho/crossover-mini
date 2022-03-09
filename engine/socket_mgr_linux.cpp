@@ -296,6 +296,8 @@ void SocketMgr::HandleDelayEvent()
 		{
 			HandleDelaySend(s);
 		}
+
+		REF_RELEASE(s);
 	}
 }
 
@@ -347,6 +349,8 @@ int SocketMgr::EventLoop(int32 timeout)
 					continue;
 				}
 				//------------------------------------------------------------
+
+				REF_ADD(s);
 				if (event & EPOLLHUP || event & EPOLLERR)
 				{
 					if (s->status_ == socket_status_connecting)
@@ -377,6 +381,7 @@ int SocketMgr::EventLoop(int32 timeout)
 						}
 					}
 				}
+				REF_RELEASE(s);
 			}
 		}
 		else
@@ -396,7 +401,9 @@ void SocketMgr::Update( uint32 cur_time )
 	{
 		Socket* s = it->second;
 	
+		REF_ADD(s);
 		s->Update(cur_time);
+		REF_RELEASE(s);
 	}
 }
 
@@ -652,6 +659,7 @@ void SocketMgr::AddSocket(Socket* s)
 	{
 		if (socket_map_.insert(make_pair(s->GetConnectIdx(), s)).second)
 		{
+			REF_ADD(s);
 			//PRINTF_DEBUG("add socket count = %d", socket_map_.size());
 		}
 		else
@@ -675,7 +683,8 @@ void SocketMgr::RemoveSocket(uint32 conn_idx)
 			PRINTF_ERROR("RemoveSocket Could not remove fd %u from epoll set, errno %u", conn_idx, errno);
 		}
 		//--------------------------------------------------------------------------------------------
-	
+		REF_RELEASE(s);
+
 		socket_map_.erase(it);
 
 		//PRINTF_DEBUG("remove socket count = %d", socket_map_.size());
@@ -690,6 +699,7 @@ void SocketMgr::Disconnect(uint32 conn_idx)
 	if (it != socket_map_.end())
 	{
 		s = it->second;
+		REF_ADD(s);
 	}
 	//------------------------------------------------------------------------
 	if (s)
@@ -720,11 +730,17 @@ bool SocketMgr::Send(uint32 conn_idx, const void* content, uint32 len)
 	if (it != socket_map_.end())
 	{
 		s = it->second;
+		REF_ADD(s);
 	}
 	//--------------------------------------------------------------------------
 	if (s)
 	{
 		bool ret = s->Send(content, len);
+		if (!ret)
+		{
+			REF_RELEASE(s);
+		}
+
 		return ret;
 	}
 	else
@@ -740,6 +756,7 @@ bool SocketMgr::SendMsg(uint32 conn_idx, const void* content, uint32 len)
 	if (it != socket_map_.end())
 	{
 		s = it->second;
+		REF_ADD(s);
 	}
 	//--------------------------------------------------------------------------
 	if (s)
@@ -761,6 +778,11 @@ bool SocketMgr::SendMsg(uint32 conn_idx, const void* content, uint32 len)
 				ret = s->SendMsg(content, len);
 			}
 
+		}
+
+		if (!ret)
+		{
+			REF_RELEASE(s);
 		}
 
 		return ret;

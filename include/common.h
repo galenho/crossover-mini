@@ -197,6 +197,11 @@ typedef function<void()> init_handler_type;
 
 static const uint32 INVALID_INDEX = 0xFFFFFFFF;
 
+//----------------------------------------------------------------------------------------
+#define REF_ADD(P) { if(P) { P->AddRef(); } }
+
+#define REF_RELEASE(P) { if(P) { if(P->Release()) { delete P; P = NULL;} } }
+
 #define DESERIALIZE(T, P) T t; T* P = &t; P->Deserialize(s);
 //----------------------------------------------------------------------------------------
 

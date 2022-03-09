@@ -150,27 +150,6 @@ bool Socket::Connect(const char* address, uint16 port)
 }
 
 #ifdef CONFIG_USE_IOCP
-typedef bool (PASCAL *connect_ex_fn)(SOCKET,
-									 const sockaddr*, int, void*, DWORD, DWORD*, OVERLAPPED*);
-
-connect_ex_fn get_connect_ex(SOCKET fd)
-{
-	GUID guid = { 0x25a207b9, 0xddf3, 0x4660,
-	{ 0x8e, 0xe9, 0x76, 0xe5, 0x8c, 0x74, 0x06, 0x3e } };
-
-	void *ptr = NULL;
-	DWORD bytes = 0;
-	if (::WSAIoctl(fd, SIO_GET_EXTENSION_FUNCTION_POINTER,
-		&guid, sizeof(guid), &ptr, sizeof(ptr), &bytes, 0, 0) != 0)
-	{
-		// Set connect_ex_ to a special value to indicate that ConnectEx is
-		// unavailable. That way we won't bother trying to look it up again.
-		ASSERT(false);
-	}
-
-	return reinterpret_cast<connect_ex_fn>(ptr);
-}
-
 bool Socket::ConnectEx(const char* address, uint16 port)
 {
 	struct hostent* ci = gethostbyname(address);
