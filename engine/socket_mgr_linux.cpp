@@ -179,7 +179,7 @@ initialiseSingleton(SocketMgr);
 SocketMgr::SocketMgr()
 {
 	auto_conn_idx_ = 1;
-	epoll_fd = 0;
+	epoll_fd_ = 0;
 }
 
 SocketMgr::~SocketMgr()
@@ -314,7 +314,7 @@ int SocketMgr::EventLoop(int32 timeout)
 			timeout_time = timeout - (int32)(cur_time - start_time);
 		}
 
-		int32 fd_count = epoll_wait(epoll_fd, events, THREAD_EVENT_SIZE, timeout_time);
+		int32 fd_count = epoll_wait(epoll_fd_, events, THREAD_EVENT_SIZE, timeout_time);
 
 		//PRINTF_INFO("epoll_fd = %d , epoll_wait fd_count = %d", epoll_fd, fd_count);
 		//PRINTF_INFO("---------------------------------------------------");

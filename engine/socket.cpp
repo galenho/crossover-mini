@@ -448,7 +448,7 @@ void Socket::Disconnect()
 	SocketEvent event;
 	event.s = this;
 	event.customized_events = SOCKET_IO_EVENT_CLOSE;
-	work_thread_->event_queue_.push_back(event);
+	SocketMgr::get_instance()->event_queue_.push_back(event);
 	work_thread_->WakeUp();
 #endif
 }
@@ -469,7 +469,7 @@ bool Socket::Send(const void* buff, uint32 len)
 		SocketEvent event;
 		event.s = this;
 		event.customized_events = SOCKET_IO_EVENT_DELAY_SEND;
-		work_thread_->event_queue_.push_back(event);
+		SocketMgr::get_instance()->event_queue_.push_back(event);
 		work_thread_->WakeUp();
 	}
 #endif
@@ -494,7 +494,7 @@ bool Socket::SendMsg(const void* buff, uint32 len)
 		SocketEvent event;
 		event.s = this;
 		event.customized_events = SOCKET_IO_EVENT_DELAY_SEND;
-		work_thread_->event_queue_.push_back(event);
+		SocketMgr::get_instance()->event_queue_.push_back(event);
 		work_thread_->WakeUp();
 	}
 #endif
