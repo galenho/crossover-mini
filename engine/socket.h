@@ -10,7 +10,6 @@
 
 #include "socket_defines.h"
 #include "timer.h"
-#include "referable.h"
 #include "scheduler.h"
 #include "sequence_buffer.h"
 #include "ikcp.h"
@@ -30,7 +29,7 @@ enum SocketStatus
 	socket_status_closing		= 5
 };
 
-class Socket : public Referable
+class Socket
 {
 public:
 #ifdef CONFIG_USE_EPOLL
@@ -48,9 +47,6 @@ public:
 			bool is_parse_package = true);
 
 	~Socket();
-
-	virtual void AddRef();
-	virtual bool Release();
 
 	void Update(uint32 cur_time);
 
@@ -193,12 +189,9 @@ public:
 
 	bool is_udp_connected_; // UDPר�е�״̬
 	ikcpcb* p_kcp_; // --own
-	Mutex kcp_mutex_;
 
 	bool is_parse_package_;
 	bool is_client_;
-
-	Mutex ref_mutex_;
 
 protected:
 	SOCKET fd_;

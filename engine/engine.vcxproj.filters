@@ -84,9 +84,6 @@
     <ClCompile Include="socket_ops_linux.cpp">
       <Filter>network\system\epoll</Filter>
     </ClCompile>
-    <ClCompile Include="referable.cpp">
-      <Filter>util</Filter>
-    </ClCompile>
     <ClCompile Include="mutex.cpp">
       <Filter>platform</Filter>
     </ClCompile>
@@ -220,9 +217,6 @@
     </ClInclude>
     <ClInclude Include="tcp_listen_socket_linux.h">
       <Filter>network\system\epoll</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\referable.h">
-      <Filter>util</Filter>
     </ClInclude>
     <ClInclude Include="..\include\timer.h">
       <Filter>util</Filter>

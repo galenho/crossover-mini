@@ -69,7 +69,6 @@ Socket::Socket(SocketType socket_type,
 		{
 			fd_ = SocketOps::CreateUDPFileDescriptor();
 
-			Guard guard(kcp_mutex_);
 			p_kcp_ = ikcp_create(conn_idx, (void*)this);
 			p_kcp_->output = &Socket::udp_output;
 			p_kcp_->input = &Socket::udp_input;
@@ -100,27 +99,10 @@ Socket::~Socket()
 	}
 }
 
-void Socket::AddRef()
-{
-	ref_mutex_.Lock();
-	Referable::AddRef();
-	ref_mutex_.UnLock();
-}
-
-bool Socket::Release()
-{
-	ref_mutex_.Lock();
-	bool ret = Referable::Release();
-	ref_mutex_.UnLock();
-
-	return ret;
-}
-
 void Socket::Update( uint32 cur_time )
 {
 	if (socket_type_ == SOCKET_TYPE_UDP)
 	{
-		Guard guard(kcp_mutex_);
 		if (is_udp_connected_ && p_kcp_)
 		{
 			ikcp_update(p_kcp_, cur_time);
@@ -416,8 +398,6 @@ void Socket::OnRead()
 				{
 					cursor += 4;
 
-					Guard guard(kcp_mutex_);
-
 					ikcp_input(p_kcp_, (const char*)(buffer_start + cursor), len);
 					while (true)
 					{
@@ -525,7 +505,6 @@ bool Socket::SendMsg(const void* buff, uint32 len)
 
 bool Socket::SendUDP(const void* buff, uint32 len)
 {
-	Guard guard(kcp_mutex_);
 	int send_ret = ikcp_send(p_kcp_, (const char*)buff, len);
 	if (send_ret < 0)
 	{

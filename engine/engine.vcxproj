@@ -272,7 +272,6 @@ RevisionExtractor.exe
     <ClCompile Include="mongo_database.cpp" />
     <ClCompile Include="mongo_database_impl.cpp" />
     <ClCompile Include="mutex.cpp" />
-    <ClCompile Include="referable.cpp" />
     <ClCompile Include="resultset.cpp" />
     <ClCompile Include="rwlock.cpp" />
     <ClCompile Include="scheduler.cpp" />
@@ -315,7 +314,6 @@ RevisionExtractor.exe
     <ClInclude Include="..\include\mongo_database.h" />
     <ClInclude Include="..\include\mongo_task.h" />
     <ClInclude Include="..\include\mutex.h" />
-    <ClInclude Include="..\include\referable.h" />
     <ClInclude Include="..\include\rwlock.h" />
     <ClInclude Include="..\include\safe_queue.h" />
     <ClInclude Include="..\include\scheduler.h" />
