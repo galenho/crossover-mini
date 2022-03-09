@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
-  <Projects src_path_win="D:/Project/crossover" src_path_linux="/root/workspace/crossover" thread_count="6">
+  <Projects src_path_win="D:/Project/crossover" src_path_linux="/root/workspace/crossover-mini" thread_count="6">
   	<Project src="engine" OutPut="libengine" ProgramType="1">
 		<IncludeDir>../../ ../../include ../../include/lua ../../include/libbson-1.0 ../../include/libmongoc-1.0</IncludeDir>
 		<LibDir></LibDir>
