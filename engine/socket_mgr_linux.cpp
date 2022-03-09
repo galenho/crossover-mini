@@ -184,14 +184,7 @@ SocketMgr::SocketMgr()
 
 SocketMgr::~SocketMgr()
 {	
-	for (uint32 n=0; n < io_threads_.size(); n++)
-	{
-		delete io_threads_[n];
-		io_threads_[n] = NULL;
-	}
 	
-	thread_count_ = 0;
-	io_threads_.clear();
 }
 
 bool SocketMgr::Init(uint32 thread_count)
