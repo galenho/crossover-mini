@@ -8,6 +8,8 @@
 #ifdef CONFIG_USE_IOCP
 bool Socket::SetupReadEvent()
 {
+	//PRINTF_INFO("SetupReadEvent fd = %d", GetFd());
+
 	DWORD r_length = 0;
 	DWORD flags = 0;
 	WSABUF buf;

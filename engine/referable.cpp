@@ -20,7 +20,8 @@ void Referable::AddRef()
 	__sync_add_and_fetch(&count_, 1);
 #endif
 
-	//PRINTF_INFO("AddRef----%d, tid = %d", count_, GetCurrentThreadId());
+	printf("\n");
+	PRINTF_INFO("AddRef----%d", count_);
 }
 
 bool Referable::Release()
@@ -30,7 +31,9 @@ bool Referable::Release()
 #else
 	__sync_sub_and_fetch(&count_, 1);
 #endif
-	//PRINTF_INFO("ReleaseRef----%d, tid = %d", count_, GetCurrentThreadId());
+	printf("\n");
+	PRINTF_INFO("ReleaseRef----%d", count_);
+	Scheduler::get_instance()->get_logger()->Save();
 
 	if (count_ == 0)
 	{

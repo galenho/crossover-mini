@@ -35,6 +35,8 @@ void HandleAcceptTCPComplete(TCPListenSocket* s, SOCKET aSocket)
 
 void HandleAcceptUDPComplete(UDPListenSocket* s)
 {
+	//PRINTF_INFO("HandleAcceptUDPComplete fd = %d", s->socket_);
+
 	uint8* buffer_start = (uint8*)(s->buff_);
 	uint32 len = *((uint32*)(buffer_start));
 	if (len == 8)
@@ -70,7 +72,7 @@ void HandleAcceptUDPComplete(UDPListenSocket* s)
 
 void HandleConnectComplete(Socket* s, uint32 len, bool is_success)
 {
-	PRINTF_INFO("HandleConnectComplete fd = %d, conn_idx = %d, status = %d, len = %d", s->GetFd(), s->GetConnectIdx(), s->status_, len);
+	//PRINTF_INFO("HandleConnectComplete fd = %d, conn_idx = %d, status = %d, len = %d", s->GetFd(), s->GetConnectIdx(), s->status_, len);
 
 	if (is_success)
 	{
@@ -100,7 +102,7 @@ void HandleConnectComplete(Socket* s, uint32 len, bool is_success)
 
 void HandleReadComplete(Socket* s, uint32 len)
 {
-	PRINTF_INFO("HandleReadComplete fd = %d, conn_idx = %d, status = %d, len = %d", s->GetFd(), s->GetConnectIdx(), s->status_, len);
+	//PRINTF_INFO("HandleReadComplete fd = %d, conn_idx = %d, status = %d, len = %d", s->GetFd(), s->GetConnectIdx(), s->status_, len);
 
 	// 释放引用-1
 	REF_RELEASE(s);
@@ -162,7 +164,7 @@ void HandleReadComplete(Socket* s, uint32 len)
 
 void HandleWriteComplete(Socket* s, uint32 len)
 {
-	PRINTF_INFO("HandleWriteComplete fd = %d, conn_idx = %d, status = %d", s->GetFd(), s->GetConnectIdx(), s->status_);
+	//PRINTF_INFO("HandleWriteComplete fd = %d, conn_idx = %d, status = %d", s->GetFd(), s->GetConnectIdx(), s->status_);
 
 	// 释放引用-1
 	REF_RELEASE(s);
@@ -180,7 +182,7 @@ void HandleWriteComplete(Socket* s, uint32 len)
 
 void HandleClose(Socket* s)
 {
-	PRINTF_INFO("HandleClose fd = %d, conn_idx = %d, status = %d", s->GetFd(), s->GetConnectIdx(), s->status_);
+	//PRINTF_INFO("HandleClose fd = %d, conn_idx = %d, status = %d", s->GetFd(), s->GetConnectIdx(), s->status_);
 
 	// 释放引用-1
 	REF_RELEASE(s);
@@ -195,7 +197,7 @@ void HandleClose(Socket* s)
 void HandleDelaySend(Socket* s, uint32 len)
 {
 	//PRINTF_INFO("HandleDelaySend fd = %d, conn_idx = %d, status = %d", s->GetFd(), s->GetConnectIdx(), s->status_);
-	// 
+	 
 	// 释放引用-1
 	REF_RELEASE(s);
 
@@ -329,7 +331,7 @@ void SocketMgr::EventLoop(int32 timeout)
 				TCPListenSocket* listen_socket = (TCPListenSocket*)ptr;
 				HandleAcceptTCPComplete(listen_socket, ov->fd_);
 			}
-			else if (ov->event_ == SOCKET_IO_EVENT_ACCEPT_UDP)
+			else if (ov->event_ == SOCKET_IO_EVENT_ACCEPT_UDP) 
 			{
 				UDPListenSocket* listen_socket = (UDPListenSocket*)ptr;
 				HandleAcceptUDPComplete(listen_socket);
@@ -338,6 +340,7 @@ void SocketMgr::EventLoop(int32 timeout)
 			{
 				Socket* s = (Socket*)ptr;
 				REF_ADD(s);
+
 				switch (ov->event_)
 				{
 				case SOCKET_IO_EVENT_CONNECT_COMPLETE:
@@ -403,6 +406,7 @@ void SocketMgr::EventLoop(int32 timeout)
 					{
 						Socket* s = (Socket*)ptr;
 						REF_ADD(s);
+
 						switch (ov->event_)
 						{
 						case SOCKET_IO_EVENT_CONNECT_COMPLETE:
@@ -735,11 +739,14 @@ bool SocketMgr::Send(uint32 conn_idx, const void* content, uint32 len)
 
 bool SocketMgr::SendMsg(uint32 conn_idx, const void* content, uint32 len)
 {
+	//PRINTF_INFO("SendMsg conn_idx = %d", conn_idx);
+
 	Socket* s = NULL;
 	hash_map<uint32, Socket*>::iterator it = socket_map_.find(conn_idx);
 	if (it != socket_map_.end())
 	{
 		s = it->second;
+
 		REF_ADD(s);
 	}
 	
@@ -784,6 +791,7 @@ void SocketMgr::Disconnect(uint32 conn_idx)
 	if (it != socket_map_.end())
 	{
 		s = it->second;
+		
 		REF_ADD(s);
 	}
 	
