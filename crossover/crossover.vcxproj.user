@@ -6,8 +6,9 @@
     <LocalDebuggerCommandArguments>tcpserver_test.lua</LocalDebuggerCommandArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LocalDebuggerCommandArguments>timer_test.lua</LocalDebuggerCommandArguments>
-    <LocalDebuggerWorkingDirectory>E:\Project\crossover(github)\test</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerCommandArguments>
+    </LocalDebuggerCommandArguments>
+    <LocalDebuggerWorkingDirectory>E:\Project\Giraffe\db_server</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
 </Project>

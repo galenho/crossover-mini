@@ -275,8 +275,6 @@ void SocketMgr::EventLoop(int32 timeout)
 		{
 			timeout_time = timeout - (int32)(cur_time - start_time);
 		}
-		
-		timeout_time = -1;
 
 		int ret = GetQueuedCompletionStatus(cp, &bytes_transferred, (LPDWORD)&ptr, &overlapped, timeout_time);
 		if (ret)
@@ -353,20 +351,27 @@ void SocketMgr::EventLoop(int32 timeout)
 				if (bytes_transferred == 0) // 第(4)种情况
 				{
 					//(4) 如果关联到一个完成端口的一个socket句柄被关闭了，则GetQueuedCompletionStatus返回ERROR_SUCCESS,并且lpNumberOfBytes等于0
-					Socket* s = (Socket*)ptr;
-					REF_ADD(s);
-					switch (ov->event_)
+					if (ov->event_ == SOCKET_IO_EVENT_ACCEPT) // 监听端口Accept
 					{
-					case SOCKET_IO_EVENT_CONNECT_COMPLETE:
-						HandleConnectComplete(s, bytes_transferred, false);
-						break;
-					case SOCKET_IO_EVENT_READ_COMPLETE:
-						HandleReadComplete(s, bytes_transferred);
-						break;
-					default:
-						break;
+						
 					}
-					REF_RELEASE(s);
+					else
+					{
+						Socket* s = (Socket*)ptr;
+						REF_ADD(s);
+						switch (ov->event_)
+						{
+						case SOCKET_IO_EVENT_CONNECT_COMPLETE:
+							HandleConnectComplete(s, bytes_transferred, false);
+							break;
+						case SOCKET_IO_EVENT_READ_COMPLETE:
+							HandleReadComplete(s, bytes_transferred);
+							break;
+						default:
+							break;
+						}
+						REF_RELEASE(s);
+					}
 				}
 				else // 第(3)种情况
 				{
