@@ -1,1 +1,0 @@
-start "server" ..\crossoverD.exe tcpserver_test.lua

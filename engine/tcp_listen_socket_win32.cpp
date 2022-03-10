@@ -81,8 +81,8 @@ bool TCPListenSocket::PostAccept()
 	// 投递一个accept请求
 	SOCKET client_socket = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
 	int addr_len = sizeof(sockaddr_in) + 16;
-	accept_event_.SetEvent(SOCKET_IO_EVENT_ACCEPT);
-	accept_event_.fd = client_socket;
+	accept_event_.SetEvent(SOCKET_IO_EVENT_ACCEPT_TCP);
+	accept_event_.fd_ = client_socket;
 
 	bool ret = accept_ex_(socket_, client_socket, buff_, 0, addr_len, addr_len, &buff_len_, &accept_event_.overlap_);
 	if (!ret)

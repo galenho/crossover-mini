@@ -2,10 +2,10 @@
 #include "timer.h"
 #include "guard.h"
 #include "tcp_listen_socket_win32.h"
+#include "udp_listen_socket_win32.h"
 
 #ifdef CONFIG_USE_IOCP
-
-void HandleAcceptComplete(TCPListenSocket* s, SOCKET aSocket)
+void HandleAcceptTCPComplete(TCPListenSocket* s, SOCKET aSocket)
 {
 	int addr_len = sizeof(sockaddr_in);
 
@@ -33,9 +33,44 @@ void HandleAcceptComplete(TCPListenSocket* s, SOCKET aSocket)
 	s->PostAccept();
 }
 
+void HandleAcceptUDPComplete(UDPListenSocket* s)
+{
+	uint8* buffer_start = (uint8*)(s->buff_);
+	uint32 len = *((uint32*)(buffer_start));
+	if (len == 8)
+	{
+		char src_conn_str[8] = "connect";
+		char dst_conn_str[8];
+		memcpy(dst_conn_str, (uint8*)(buffer_start + 4), 8);
+		if (strcmp(src_conn_str, dst_conn_str) == 0)
+		{
+			// 模拟tcp的accept, 创建一个新的一个udp socket
+			uint16 out_port = 0;
+			bool ret = SocketMgr::get_instance()->AcceptUDP(s->client_addr_,
+				s->onconnected_handler_,
+				s->onclose_handler_,
+				s->onrecv_handler_,
+				s->sendbuffersize_,
+				s->recvbuffersize_,
+				out_port);
+
+			// 回发一个连接包给UDP客户端, 告诉客户端新的端口号
+			if (ret)
+			{
+				RepServerPort rep_msg;
+				rep_msg.port = out_port;
+				sendto(s->socket_, (char*)&rep_msg, sizeof(rep_msg), 0, (sockaddr*)&s->client_addr_, sizeof(s->client_addr_));
+			}
+		}
+	}
+
+	// 再投递一个AcceptEx
+	s->PostAccept();
+}
+
 void HandleConnectComplete(Socket* s, uint32 len, bool is_success)
 {
-	//PRINTF_INFO("HandleConnectComplete fd = %d, conn_idx = %d, status = %d, len = %d", s->GetFd(), s->GetConnectIdx(), s->status_, len);
+	PRINTF_INFO("HandleConnectComplete fd = %d, conn_idx = %d, status = %d, len = %d", s->GetFd(), s->GetConnectIdx(), s->status_, len);
 
 	if (is_success)
 	{
@@ -65,7 +100,7 @@ void HandleConnectComplete(Socket* s, uint32 len, bool is_success)
 
 void HandleReadComplete(Socket* s, uint32 len)
 {
-	//PRINTF_INFO("HandleReadComplete fd = %d, conn_idx = %d, status = %d, len = %d", s->GetFd(), s->GetConnectIdx(), s->status_, len);
+	PRINTF_INFO("HandleReadComplete fd = %d, conn_idx = %d, status = %d, len = %d", s->GetFd(), s->GetConnectIdx(), s->status_, len);
 
 	// 释放引用-1
 	REF_RELEASE(s);
@@ -127,7 +162,7 @@ void HandleReadComplete(Socket* s, uint32 len)
 
 void HandleWriteComplete(Socket* s, uint32 len)
 {
-	//PRINTF_INFO("HandleWriteComplete fd = %d, conn_idx = %d, status = %d", s->GetFd(), s->GetConnectIdx(), s->status_);
+	PRINTF_INFO("HandleWriteComplete fd = %d, conn_idx = %d, status = %d", s->GetFd(), s->GetConnectIdx(), s->status_);
 
 	// 释放引用-1
 	REF_RELEASE(s);
@@ -145,7 +180,7 @@ void HandleWriteComplete(Socket* s, uint32 len)
 
 void HandleClose(Socket* s)
 {
-	//PRINTF_INFO("HandleClose fd = %d, conn_idx = %d, status = %d", s->GetFd(), s->GetConnectIdx(), s->status_);
+	PRINTF_INFO("HandleClose fd = %d, conn_idx = %d, status = %d", s->GetFd(), s->GetConnectIdx(), s->status_);
 
 	// 释放引用-1
 	REF_RELEASE(s);
@@ -289,10 +324,15 @@ void SocketMgr::EventLoop(int32 timeout)
 				continue;
 			}
 
-			if (ov->event_ == SOCKET_IO_EVENT_ACCEPT) // 监听端口Accept
+			if (ov->event_ == SOCKET_IO_EVENT_ACCEPT_TCP) // 监听端口Accept
 			{
 				TCPListenSocket* listen_socket = (TCPListenSocket*)ptr;
-				HandleAcceptComplete(listen_socket, ov->fd);
+				HandleAcceptTCPComplete(listen_socket, ov->fd_);
+			}
+			else if (ov->event_ == SOCKET_IO_EVENT_ACCEPT_UDP)
+			{
+				UDPListenSocket* listen_socket = (UDPListenSocket*)ptr;
+				HandleAcceptUDPComplete(listen_socket);
 			}
 			else
 			{
@@ -351,9 +391,13 @@ void SocketMgr::EventLoop(int32 timeout)
 				if (bytes_transferred == 0) // 第(4)种情况
 				{
 					//(4) 如果关联到一个完成端口的一个socket句柄被关闭了，则GetQueuedCompletionStatus返回ERROR_SUCCESS,并且lpNumberOfBytes等于0
-					if (ov->event_ == SOCKET_IO_EVENT_ACCEPT) // 监听端口Accept
+					if (ov->event_ == SOCKET_IO_EVENT_ACCEPT_TCP) // 监听端口Accept
 					{
 						
+					}
+					else if (ov->event_ == SOCKET_IO_EVENT_ACCEPT_UDP)
+					{
+
 					}
 					else
 					{

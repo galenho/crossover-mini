@@ -20,9 +20,8 @@ bool UDPServer_impl::Start(
 	uint32 recvbuffersize)
 {
 	listen_socket_ = new UDPListenSocket(ip.c_str(), port, onconnected_handler, onclose_handler, onrecv_handler, sendbuffersize, recvbuffersize);
+	listen_socket_->Start();
 
-	listen_socket_->set_name("UDPServer thread");
-	listen_socket_->Activate();
 	return true;
 }
 

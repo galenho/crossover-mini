@@ -3,12 +3,11 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LocalDebuggerWorkingDirectory>E:\Project\crossover-mini\bin\test</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>tcpserver_test.lua</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>udpclient_test.lua</LocalDebuggerCommandArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LocalDebuggerCommandArguments>
-    </LocalDebuggerCommandArguments>
-    <LocalDebuggerWorkingDirectory>E:\Project\Giraffe\db_server</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerCommandArguments>udpclient_test.lua</LocalDebuggerCommandArguments>
+    <LocalDebuggerWorkingDirectory>E:\Project\crossover-mini\bin\test</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
 </Project>

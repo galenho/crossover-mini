@@ -41,6 +41,11 @@ void UDPClient_impl::Disconnect( uint32 conn_idx )
 	SocketMgr::get_instance()->Disconnect(conn_idx);
 }
 
+bool UDPClient_impl::Send(uint32 conn_idx, const void* msg, uint32 len)
+{
+	return SocketMgr::get_instance()->Send(conn_idx, msg, len);
+}
+
 bool UDPClient_impl::SendMsg( uint32 conn_idx, const void* msg, uint32 len )
 {
 	return SocketMgr::get_instance()->SendMsg(conn_idx, msg, len);

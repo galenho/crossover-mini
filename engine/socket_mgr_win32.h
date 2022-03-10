@@ -16,8 +16,10 @@
 
 class Socket;
 class TCPListenSocket;
+class UDPListenSocket;
 //----------------------------------------------------------------------------
-void HandleAcceptComplete(TCPListenSocket* s, SOCKET aSocket);
+void HandleAcceptTCPComplete(TCPListenSocket* s, SOCKET aSocket);
+void HandleAcceptUDPComplete(UDPListenSocket* s);
 
 void HandleConnectComplete(Socket* s, uint32 len, bool is_success);
 void HandleReadComplete(Socket* s, uint32 len);

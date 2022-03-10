@@ -1,1 +1,1 @@
-start "client" ..\crossoverD.exe tcpclient_test.lua
+start "client" ..\crossoverD.exe udpclient_test.lua

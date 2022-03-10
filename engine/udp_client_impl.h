@@ -17,6 +17,8 @@ public:
 				  uint32 recvbuffersize);
 
 	void Disconnect(uint32 conn_idx);
+
+	bool Send(uint32 conn_idx, const void* msg, uint32 len);
 	bool SendMsg( uint32 conn_idx, const void* msg, uint32 len );
 
 	char* GetIpAddress( uint32 conn_idx );
