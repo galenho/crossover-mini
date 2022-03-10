@@ -62,6 +62,7 @@ Socket::Socket( SOCKET wakeup_fd )
 {
 	is_client_ = false;
 	fd_ = wakeup_fd;
+	memset(&m_client, 0, sizeof(m_client));
 }
 #endif
 
@@ -75,6 +76,7 @@ Socket::Socket(SocketType socket_type,
 			   uint32 recvbuffersize,
 			   bool is_parse_package) 
 {
+	memset(&m_client, 0, sizeof(m_client));
 	socket_type_ = socket_type;
 
 	if (fd == 0) //说明是TcpClient连接

@@ -31,7 +31,6 @@ public:
 public:
 	SOCKET socket_;
 	struct sockaddr_in address_;
-	uint32 len;
 	
 	uint32 sendbuffersize_;
 	uint32 recvbuffersize_;

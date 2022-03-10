@@ -1,6 +1,6 @@
 #include "tcp_server_impl.h"
 
-TCPServer_impl::TCPServer_impl( )
+TCPServer_impl::TCPServer_impl()
 {
 	listen_socket_ = NULL;
 }

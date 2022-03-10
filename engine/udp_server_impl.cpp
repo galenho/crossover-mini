@@ -19,7 +19,14 @@ bool UDPServer_impl::Start(
 	uint32 sendbuffersize, 
 	uint32 recvbuffersize)
 {
-	listen_socket_ = new UDPListenSocket(ip.c_str(), port, onconnected_handler, onclose_handler, onrecv_handler, sendbuffersize, recvbuffersize);
+	listen_socket_ = new UDPListenSocket(ip.c_str(), 
+		port,
+		onconnected_handler, 
+		onclose_handler, 
+		onrecv_handler, 
+		sendbuffersize, 
+		recvbuffersize);
+
 	listen_socket_->Start();
 
 	return true;

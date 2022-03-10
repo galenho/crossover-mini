@@ -12,12 +12,8 @@
 
 #include <errno.h>
 #include "socket_defines.h"
-#include "thread_base.h" 
-#include "socket_mgr_linux.h"
-#include "scheduler.h"
 
-class SocketMgr;
-class TCPListenSocket : public ThreadBase
+class TCPListenSocket
 {
 public:
 	TCPListenSocket(const char* listen_address, 
@@ -27,121 +23,22 @@ public:
 				 const HandleInfo onrecv_handler,
 				 uint32 sendbuffersize, 
 				 uint32 recvbuffersize,
-				 bool is_parse_package = true)
-	{
-		onconnected_handler_ = onconnected_handler;
-		onclose_handler_ = onclose_handler;
-		onrecv_handler_ = onrecv_handler;
+				 bool is_parse_package = true);
 
-		sendbuffersize_ = sendbuffersize;
-		recvbuffersize_ = recvbuffersize;
+	~TCPListenSocket();
 
-		is_parse_package_ = is_parse_package;
+	bool Start();
+	void Close();
 
-		socket_ = socket(AF_INET, SOCK_STREAM, 0);
+	// 投递一个accept请求
+	bool PostAccept();
 
-		SocketOps::ReuseAddr(socket_);
-		SocketOps::Blocking(socket_);
+	int GetFd();
 
-		address_.sin_family = AF_INET;
-		address_.sin_port = ntohs((u_short)port);
-		address_.sin_addr.s_addr = htonl(INADDR_ANY);
-
-		struct hostent* hostname = gethostbyname(listen_address);
-		if (hostname != 0)
-		{
-			memcpy(&address_.sin_addr.s_addr, hostname->h_addr_list[0], hostname->h_length);
-		}
-
-		int ret = ::bind(socket_, (const sockaddr*)&address_, sizeof(address_));
-		if (ret != 0)
-		{
-			PRINTF_ERROR("Bind unsuccessful on port %u.", (unsigned int)port);
-			ASSERT(false);
-			return;
-		}
-
-		ret = listen(socket_, 5);
-		if (ret != 0)
-		{
-			PRINTF_ERROR("Unable to listen on port %u.", (unsigned int)port);
-			ASSERT(false);
-			return;
-		}
-		len = sizeof(sockaddr_in);
-	}
-
-	virtual ~TCPListenSocket()
-	{
-		if (is_running_)
-		{
-			SocketOps::CloseSocket(socket_);
-		}
-	}
-
-	void Close()
-	{
-		if (is_running_)
-		{
-			is_running_ = false;
-		}
-
-		SocketOps::CloseSocket(socket_);
-	}
-
-	virtual bool Run()
-	{
-		// 线程开始运行
-		Scheduler::get_instance()->add_thread_ref(thread_name_);
-
-		int fail_times = 0;
-		while (is_running_)
-		{
-			struct sockaddr_in tempAddress;
-			SOCKET aSocket = accept(socket_, (sockaddr *)&tempAddress, (socklen_t *)&len);
-			if (aSocket == -1)
-			{
-				if (fail_times < 3)
-				{
-					fail_times++;
-					continue;
-				}
-				else
-				{
-					// 连续3次失败则break
-					PRINTF_ERROR("ListenSocket, accpet error:%d", errno);
-					break;
-				}
-			}
-			else
-			{
-				fail_times = 0;
-
-				SocketMgr::get_instance()->Accept(aSocket, 
-					tempAddress,
-					onconnected_handler_,
-					onclose_handler_,
-					onrecv_handler_,
-					sendbuffersize_, 
-					recvbuffersize_,
-					is_parse_package_);
-			}
-		}
-
-		// 线程结束运行
-		Scheduler::get_instance()->remove_thread_ref(thread_name_);
-		return true;
-	}
-
-	int GetFd()
-	{
-		return socket_;
-	}	
-
-private:
+public:
 	SOCKET socket_;
 	struct sockaddr_in address_;
-	uint32 len;
+	uint16 port_;
 
 	uint32 sendbuffersize_;
 	uint32 recvbuffersize_;

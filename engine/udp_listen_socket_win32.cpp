@@ -1,5 +1,6 @@
 #include "network.h"
 
+#ifdef CONFIG_USE_IOCP
 UDPListenSocket::UDPListenSocket(const char* listen_address, uint16 port, const HandleInfo onconnected_handler, const HandleInfo onclose_handler, const HandleInfo onrecv_handler, uint32 sendbuffersize, uint32 recvbuffersize)
 {
 	buff_len_ = 0;
@@ -30,8 +31,6 @@ UDPListenSocket::UDPListenSocket(const char* listen_address, uint16 port, const 
 		assert(false);
 		return;
 	}
-
-	len = sizeof(sockaddr_in);
 
 	//监听端口与完成端口绑定
 	CreateIoCompletionPort((HANDLE)socket_, SocketMgr::get_instance()->GetCompletionPort(), (ULONG_PTR)this, 0);
@@ -73,3 +72,5 @@ bool UDPListenSocket::PostAccept()
 
 	return true;
 }
+
+#endif

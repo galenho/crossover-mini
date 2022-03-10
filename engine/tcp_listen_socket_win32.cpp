@@ -1,5 +1,6 @@
 #include "network.h"
 
+#ifdef CONFIG_USE_IOCP
 TCPListenSocket::TCPListenSocket(
 	const char* listen_address, 
 	uint16 port, 
@@ -96,3 +97,4 @@ bool TCPListenSocket::PostAccept()
 
 	return true;
 }
+#endif
