@@ -1,11 +1,36 @@
 #include "network.h"
 #include "timer.h"
 #include "guard.h"
+#include "tcp_listen_socket_win32.h"
 
 #ifdef CONFIG_USE_IOCP
-void HandleAcceptComplete(Socket* s, uint32 len, bool is_success)
-{
 
+void HandleAcceptComplete(TCPListenSocket* s, SOCKET aSocket)
+{
+	int addr_len = sizeof(sockaddr_in);
+
+	sockaddr_in* addr_local = NULL;
+	int addr_len_local = addr_len;
+	sockaddr_in* addr_client = NULL;
+	int addr_len_client = addr_len;
+
+	s->accept_addrs_(s->buff_, 0,
+		addr_len + 16, addr_len + 16,
+		(LPSOCKADDR*)&addr_local, &addr_len_local,
+		(LPSOCKADDR*)&addr_client, &addr_len_client);
+
+	SocketMgr::get_instance()->Accept(aSocket,
+		*addr_client,
+		s->onconnected_handler_,
+		s->onclose_handler_,
+		s->onrecv_handler_,
+		s->sendbuffersize_,
+		s->recvbuffersize_,
+		s->is_parse_package_);
+
+
+	// 再投递一个AcceptEx
+	s->PostAccept();
 }
 
 void HandleConnectComplete(Socket* s, uint32 len, bool is_success)
@@ -38,7 +63,7 @@ void HandleConnectComplete(Socket* s, uint32 len, bool is_success)
 	}
 }
 
-void HandleReadComplete(Socket* s, uint32 len, bool is_success)
+void HandleReadComplete(Socket* s, uint32 len)
 {
 	//PRINTF_INFO("HandleReadComplete fd = %d, conn_idx = %d, status = %d, len = %d", s->GetFd(), s->GetConnectIdx(), s->status_, len);
 
@@ -100,7 +125,7 @@ void HandleReadComplete(Socket* s, uint32 len, bool is_success)
 	}
 }
 
-void HandleWriteComplete(Socket* s, uint32 len, bool is_success)
+void HandleWriteComplete(Socket* s, uint32 len)
 {
 	//PRINTF_INFO("HandleWriteComplete fd = %d, conn_idx = %d, status = %d", s->GetFd(), s->GetConnectIdx(), s->status_);
 
@@ -118,7 +143,7 @@ void HandleWriteComplete(Socket* s, uint32 len, bool is_success)
 	}
 }
 
-void HandleClose(Socket* s, uint32 len, bool is_success)
+void HandleClose(Socket* s)
 {
 	//PRINTF_INFO("HandleClose fd = %d, conn_idx = %d, status = %d", s->GetFd(), s->GetConnectIdx(), s->status_);
 
@@ -132,7 +157,7 @@ void HandleClose(Socket* s, uint32 len, bool is_success)
 	}
 }
 
-void HandleDelaySend(Socket* s, uint32 len, bool is_success)
+void HandleDelaySend(Socket* s, uint32 len)
 {
 	//PRINTF_INFO("HandleDelaySend fd = %d, conn_idx = %d, status = %d", s->GetFd(), s->GetConnectIdx(), s->status_);
 	// 
@@ -145,17 +170,18 @@ void HandleDelaySend(Socket* s, uint32 len, bool is_success)
 	}
 }
 
-void HandleShutdown(Socket* s, uint32 len, bool is_success)
+void HandleShutdown()
 {
 
 }
 
-void HandleWakeUp(Socket* s, uint32 len, bool is_success)
+void HandleWakeUp()
 {
 
 }
 
 //-------------------------------------------------------------------------------
+
 initialiseSingleton(SocketMgr);
 SocketMgr::SocketMgr()
 {
@@ -236,7 +262,7 @@ void SocketMgr::EventLoop(int32 timeout)
 
 	HANDLE cp = completion_port_;
 	DWORD bytes_transferred;
-	Socket* s;
+	void* ptr = NULL;
 	OverlappedStruct* ov;
 	LPOVERLAPPED overlapped;
 	
@@ -250,12 +276,9 @@ void SocketMgr::EventLoop(int32 timeout)
 			timeout_time = timeout - (int32)(cur_time - start_time);
 		}
 		
-#ifndef _WIN64
-		int ret = GetQueuedCompletionStatus(cp, &bytes_transferred, (LPDWORD)&s, &overlapped, timeout_time);
-#else
-		int ret = GetQueuedCompletionStatus(cp, &bytes_transferred, (PULONG_PTR)&s, &overlapped, timeout_time);
-#endif
+		timeout_time = -1;
 
+		int ret = GetQueuedCompletionStatus(cp, &bytes_transferred, (LPDWORD)&ptr, &overlapped, timeout_time);
 		if (ret)
 		{
 			//(1) 如果函数从完成端口取出一个成功I/O操作的完成包，返回值为非0。
@@ -263,17 +286,42 @@ void SocketMgr::EventLoop(int32 timeout)
 
 			ov = CONTAINING_RECORD(overlapped, OverlappedStruct, overlap_);
 
-			if (s == NULL)
+			if (ptr == NULL)
 			{
 				continue;
 			}
-			//---------------------------------------------------------------------------------
-			REF_ADD(s);
-			if (ov->event_ >= SOCKET_IO_EVENT_CONNECT_COMPLETE && ov->event_ < MAX_SOCKET_IO_EVENTS)
+
+			if (ov->event_ == SOCKET_IO_EVENT_ACCEPT) // 监听端口Accept
 			{
-				ophandlers[ov->event_](s, bytes_transferred, true);
+				TCPListenSocket* listen_socket = (TCPListenSocket*)ptr;
+				HandleAcceptComplete(listen_socket, ov->fd);
 			}
-			REF_RELEASE(s);
+			else
+			{
+				Socket* s = (Socket*)ptr;
+				REF_ADD(s);
+				switch (ov->event_)
+				{
+				case SOCKET_IO_EVENT_CONNECT_COMPLETE:
+					HandleConnectComplete(s, bytes_transferred, true);
+					break;
+				case SOCKET_IO_EVENT_READ_COMPLETE:
+					HandleReadComplete(s, bytes_transferred);
+					break;
+				case SOCKET_IO_EVENT_WRITE_COMPLETE:
+					HandleWriteComplete(s, bytes_transferred);
+					break;
+				case SOCKET_IO_EVENT_DELAY_SEND:
+					HandleDelaySend(s, bytes_transferred);
+					break;
+				case SOCKET_IO_EVENT_CLOSE:
+					HandleClose(s);
+					break;
+				default:
+					break;
+				}
+				REF_RELEASE(s);
+			}
 		}
 		else
 		{
@@ -296,7 +344,7 @@ void SocketMgr::EventLoop(int32 timeout)
 			}
 			else
 			{
-				if (s == NULL)
+				if (ptr == NULL)
 				{
 					continue;
 				}
@@ -305,8 +353,19 @@ void SocketMgr::EventLoop(int32 timeout)
 				if (bytes_transferred == 0) // 第(4)种情况
 				{
 					//(4) 如果关联到一个完成端口的一个socket句柄被关闭了，则GetQueuedCompletionStatus返回ERROR_SUCCESS,并且lpNumberOfBytes等于0
+					Socket* s = (Socket*)ptr;
 					REF_ADD(s);
-					ophandlers[ov->event_](s, bytes_transferred, false);
+					switch (ov->event_)
+					{
+					case SOCKET_IO_EVENT_CONNECT_COMPLETE:
+						HandleConnectComplete(s, bytes_transferred, false);
+						break;
+					case SOCKET_IO_EVENT_READ_COMPLETE:
+						HandleReadComplete(s, bytes_transferred);
+						break;
+					default:
+						break;
+					}
 					REF_RELEASE(s);
 				}
 				else // 第(3)种情况

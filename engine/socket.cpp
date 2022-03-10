@@ -9,6 +9,54 @@
 #include "scheduler.h"
 #include "lua_fix.h"
 
+#ifdef CONFIG_USE_IOCP
+LPFN_CONNECTEX get_connect_ex(SOCKET fd)
+{
+	GUID guid = WSAID_CONNECTEX;
+
+	LPFN_CONNECTEX ptr = NULL;
+	DWORD bytes = 0;
+	if (::WSAIoctl(fd, SIO_GET_EXTENSION_FUNCTION_POINTER,
+		&guid, sizeof(guid), &ptr, sizeof(ptr), &bytes, 0, 0) != 0)
+	{
+		ASSERT(false);
+	}
+
+	return ptr;
+}
+
+LPFN_ACCEPTEX get_accept_ex(SOCKET fd)
+{
+	GUID guid = WSAID_ACCEPTEX;
+
+	LPFN_ACCEPTEX ptr = NULL;
+	DWORD bytes = 0;
+	if (::WSAIoctl(fd, SIO_GET_EXTENSION_FUNCTION_POINTER,
+		&guid, sizeof(guid), &ptr, sizeof(ptr), &bytes, 0, 0) != 0)
+	{
+		ASSERT(false);
+	}
+
+	return ptr;
+}
+
+LPFN_GETACCEPTEXSOCKADDRS get_accept_addr(SOCKET fd)
+{
+	GUID guid = WSAID_GETACCEPTEXSOCKADDRS;
+
+	LPFN_GETACCEPTEXSOCKADDRS ptr = NULL;
+	DWORD bytes = 0;
+	if (0 != WSAIoctl(fd, SIO_GET_EXTENSION_FUNCTION_POINTER,
+		&guid, sizeof(guid), &ptr, sizeof(ptr), &bytes, NULL, NULL) != 0)
+	{
+		ASSERT(false);
+	}
+
+	return ptr;
+}
+
+#endif
+
 #ifdef CONFIG_USE_EPOLL
 Socket::Socket( SOCKET wakeup_fd )
 {
@@ -186,8 +234,13 @@ bool Socket::ConnectEx(const char* address, uint16 port)
 	else //°ó¶¨³É¹¦
 	{
 		connect_event_.SetEvent(SOCKET_IO_EVENT_CONNECT_COMPLETE);
-		connect_ex_fn connect_ex = get_connect_ex(fd_);
-		bool result = connect_ex(fd_, (const sockaddr*)&m_client, sizeof(m_client), 0, 0, 0, &connect_event_.overlap_);
+
+		LPFN_CONNECTEX connect_ex = get_connect_ex(fd_);
+		PVOID lpSendBuffer = NULL;
+		DWORD dwSendDataLength = 0;
+		DWORD dwBytesSent = 0;
+		bool result = connect_ex(fd_, (const sockaddr*)&m_client, sizeof(m_client), lpSendBuffer, dwSendDataLength, &dwBytesSent, &connect_event_.overlap_);
+
 		if (!result)
 		{
 			last_error = ::WSAGetLastError();

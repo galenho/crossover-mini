@@ -25,11 +25,13 @@ public:
 	~TCPListenSocket();
 
 	bool Start();
-
 	void Close();
 
-private:
-	SOCKET fd_;
+	// 投递一个accept请求
+	bool PostAccept();
+
+public:
+	SOCKET socket_;
 	struct sockaddr_in address_;
 	uint16 port_;
 	
@@ -45,6 +47,9 @@ private:
 
 	char buff_[128];
 	DWORD buff_len_;
+
+	LPFN_ACCEPTEX accept_ex_;
+	LPFN_GETACCEPTEXSOCKADDRS accept_addrs_;
 };
 
 #endif

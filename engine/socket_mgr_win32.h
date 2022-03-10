@@ -15,23 +15,19 @@
 #include "rwlock.h"
 
 class Socket;
+class TCPListenSocket;
 //----------------------------------------------------------------------------
-typedef void(*OperationHandler)(Socket* s, uint32 len, bool is_success);
+void HandleAcceptComplete(TCPListenSocket* s, SOCKET aSocket);
 
-void HandleAcceptComplete(Socket* s, uint32 len, bool is_success);
 void HandleConnectComplete(Socket* s, uint32 len, bool is_success);
-void HandleReadComplete(Socket* s, uint32 len, bool is_success);
-void HandleWriteComplete(Socket* s, uint32 len, bool is_success);
-void HandleClose(Socket* s, uint32 len, bool is_success);
-void HandleDelaySend(Socket* s, uint32 len, bool is_success);
+void HandleReadComplete(Socket* s, uint32 len);
+void HandleWriteComplete(Socket* s, uint32 len);
 
-void HandleShutdown(Socket* s, uint32 len, bool is_success);
-void HandleWakeUp(Socket* s, uint32 len, bool is_success);
+void HandleDelaySend(Socket* s, uint32 len);
+void HandleClose(Socket* s);
 
-static OperationHandler ophandlers[MAX_SOCKET_IO_EVENTS] =
-{
-	&HandleAcceptComplete, &HandleConnectComplete, &HandleReadComplete, &HandleWriteComplete, &HandleClose, &HandleDelaySend, &HandleShutdown, &HandleWakeUp
-};
+void HandleShutdown();
+void HandleWakeUp();
 
 //----------------------------------------------------------------------------
 class SocketMgr : public Singleton<SocketMgr>

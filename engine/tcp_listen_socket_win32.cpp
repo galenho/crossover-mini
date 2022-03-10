@@ -11,6 +11,8 @@ TCPListenSocket::TCPListenSocket(
 	bool is_parse_package)
 {
 	buff_len_ = 0;
+	accept_ex_ = NULL;
+	accept_addrs_ = NULL;
 
 	port_ = port;
 	onconnected_handler_ = onconnected_handler;
@@ -53,48 +55,44 @@ TCPListenSocket::~TCPListenSocket()
 
 bool TCPListenSocket::Start()
 {
-	bool ret = listen(fd_, 5);
+	bool ret = listen(socket_, 5);
 	if (ret != 0)
 	{
 		PRINTF_ERROR("Unable to listen on port %u.", port_);
 		return false;
 	}
 
-	/*
-	SocketMgr::get_instance()->Accept(aSocket,
-		tempAddress,
-		onconnected_handler_,
-		onclose_handler_,
-		onrecv_handler_,
-		sendbuffersize_,
-		recvbuffersize_,
-		is_parse_package_);
-	*/
+	accept_ex_ = get_accept_ex(socket_);
+	accept_addrs_ = get_accept_addr(socket_);
 
-	SOCKET client_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	// 先投递一个请求
+	ret = PostAccept();
 
-	int addr_len = sizeof(sockaddr_in) + 16;
-	accept_event_.SetEvent(SOCKET_IO_EVENT_ACCEPT);
-	connect_ex_fn accept_ex = get_accept_ex(fd_);
-	bool ret = accept_ex(fd_, client_socket, buff_, 0, addr_len, addr_len, &buff_len_, &accept_event_.overlap_);
-	if (!ret)
-	{
-
-	}
-
-	/*
-	bool ret = AcceptEx(fd_, client_socket, buff_, 0, addr_len, addr_len, &buff_len_, &accept_event_.overlap_);
-	if (false == ret && ERROR_IO_PENDING != GetLastError())
-	{
-		PRINTF_ERROR("AcceptEx Failed : %d", GetLastError());
-		return false;
-	}
-	*/
-
-	return true;
+	return ret;
 }
 
 void TCPListenSocket::Close()
 {
 	SocketOps::CloseSocket(socket_);
+}
+
+bool TCPListenSocket::PostAccept()
+{
+	// 投递一个accept请求
+	SOCKET client_socket = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
+	int addr_len = sizeof(sockaddr_in) + 16;
+	accept_event_.SetEvent(SOCKET_IO_EVENT_ACCEPT);
+	accept_event_.fd = client_socket;
+
+	bool ret = accept_ex_(socket_, client_socket, buff_, 0, addr_len, addr_len, &buff_len_, &accept_event_.overlap_);
+	if (!ret)
+	{
+		if (WSAGetLastError() != ERROR_IO_PENDING)
+		{
+			PRINTF_ERROR("PostAccept error = %d", WSAGetLastError());
+			return false;
+		}
+	}
+
+	return true;
 }
