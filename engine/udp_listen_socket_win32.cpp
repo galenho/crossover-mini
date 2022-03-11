@@ -3,6 +3,9 @@
 #ifdef CONFIG_USE_IOCP
 UDPListenSocket::UDPListenSocket(const char* listen_address, uint16 port, const HandleInfo onconnected_handler, const HandleInfo onclose_handler, const HandleInfo onrecv_handler, uint32 sendbuffersize, uint32 recvbuffersize)
 {
+	socket_type_ = SOCKET_TYPE_UDP;
+	is_listen_ = true;
+
 	buff_len_ = 0;
 
 	onconnected_handler_ = onconnected_handler;

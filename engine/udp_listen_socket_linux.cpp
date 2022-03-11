@@ -3,6 +3,9 @@
 #ifdef CONFIG_USE_EPOLL
 UDPListenSocket::UDPListenSocket(const char* listen_address, uint16 port, const HandleInfo onconnected_handler, const HandleInfo onclose_handler, const HandleInfo onrecv_handler, uint32 sendbuffersize, uint32 recvbuffersize)
 {
+	socket_type_ = SOCKET_TYPE_UDP;
+	is_listen_ = true;
+
 	onconnected_handler_ = onconnected_handler;
 	onclose_handler_ = onclose_handler;
 	onrecv_handler_ = onrecv_handler;
@@ -34,7 +37,17 @@ UDPListenSocket::UDPListenSocket(const char* listen_address, uint16 port, const 
 	}
 
 	//监听端口与完成端口绑定
+	struct epoll_event ev;
+	memset(&ev, 0, sizeof(epoll_event));
+	ev.events = EPOLLIN | EPOLLET;
+	ev.data.ptr = this;
 
+	int epoll_fd = SocketMgr::get_instance()->GetEpollFd();
+	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, socket_, &ev))
+	{
+		PRINTF_ERROR("epoll", "Could not add event to epoll set on fd %u ", socket_);
+		ASSERT(false);
+	}
 }
 
 UDPListenSocket::~UDPListenSocket()

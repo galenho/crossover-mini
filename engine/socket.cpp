@@ -76,8 +76,10 @@ Socket::Socket(SocketType socket_type,
 			   uint32 recvbuffersize,
 			   bool is_parse_package) 
 {
-	memset(&m_client, 0, sizeof(m_client));
 	socket_type_ = socket_type;
+	is_listen_ = false;
+
+	memset(&m_client, 0, sizeof(m_client));
 
 	if (fd == 0) //说明是TcpClient连接
 	{
@@ -470,7 +472,7 @@ void Socket::OnRead()
 
 void Socket::OnDisconnect()
 {
-	SocketCloseTask::process(onconnected_handler_, conn_idx_);
+	SocketCloseTask::process(onclose_handler_, conn_idx_);
 }
 
 void Socket::Disconnect()

@@ -11,6 +11,9 @@ TCPListenSocket::TCPListenSocket(
 	uint32 recvbuffersize, 
 	bool is_parse_package)
 {
+	socket_type_ = SOCKET_TYPE_TCP;
+	is_listen_ = true;
+
 	buff_len_ = 0;
 	accept_ex_ = NULL;
 	accept_addrs_ = NULL;

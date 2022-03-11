@@ -9,7 +9,7 @@
 
 #ifdef CONFIG_USE_IOCP
 
-class UDPListenSocket
+class UDPListenSocket : public SocketBase
 {
 public:
 	UDPListenSocket(const char* listen_address, 
@@ -20,7 +20,7 @@ public:
 				 uint32 sendbuffersize, 
 				 uint32 recvbuffersize);
 
-	~UDPListenSocket();
+	virtual ~UDPListenSocket();
 
 	bool Start();
 	void Close();

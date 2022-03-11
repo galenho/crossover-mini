@@ -10,6 +10,35 @@
 
 #include "netinet/tcp.h"
 #include "guard.h"
+#include "tcp_listen_socket_win32.h"
+#include "udp_listen_socket_win32.h"
+
+void HandleAcceptTCPComplete(TCPListenSocket* s)
+{
+	int len = 0;
+	struct sockaddr_in tempAddress;
+
+	SOCKET aSocket = accept(socket_, (sockaddr*)&tempAddress_, (socklen_t*)&len);
+	if (aSocket == -1)
+	{
+		LOG_ERROR("accept error");
+		return;
+	}
+
+	SocketMgr::get_instance()->Accept(SocketMgr::get_instance()->Accept(aSocket,
+		*tempAddress,
+		s->onconnected_handler_,
+		s->onclose_handler_,
+		s->onrecv_handler_,
+		s->sendbuffersize_,
+		s->recvbuffersize_,
+		s->is_parse_package_);
+}
+
+void HandleAcceptUDPComplete(UDPListenSocket* s)
+{
+
+}
 
 void HandleConnect(Socket* s, bool is_success)
 {
@@ -330,11 +359,11 @@ int SocketMgr::EventLoop(int32 timeout)
 			for (int i = 0; i < fd_count; i++)
 			{
 				uint32 event = events[i].events;
-				Socket* s = (Socket*)(events[i].data.ptr);
+				SocketBase* socket = (Socket*)(events[i].data.ptr);
 
-				//PRINTF_INFO("epoll_wait fd = %d, events = %d", s->GetFd(), events[i].events);
+				PRINTF_INFO("epoll_wait events = %d", events[i].events);
 
-				if (s == wakeup_s_) //唤醒事件
+				if (socket == wakeup_s_) //唤醒事件
 				{
 					if (event & EPOLLIN)
 					{
@@ -348,40 +377,57 @@ int SocketMgr::EventLoop(int32 timeout)
 
 					continue;
 				}
-				//------------------------------------------------------------
-
-				REF_ADD(s);
-				if (event & EPOLLHUP || event & EPOLLERR)
+				else if (socket->is_listen_) //监听
 				{
-					if (s->status_ == socket_status_connecting)
+					if (socket->socket_type_ == SOCKET_TYPE_TCP)
 					{
-						HandleConnect(s, false);
+						TCPListenSocket* s = (TCPListenSocket*)socket;
+						HandleAcceptTCPComplete(s);
 					}
-					else
+					else if(socket->socket_type_ == SOCKET_TYPE_UDP)
 					{
-						SocketMgr::get_instance()->CloseSocket(s);
+						UDPListenSocket* s = (UDPListenSocket*)socket;
+
 					}
+					
+					continue;
 				}
 				else
 				{
-					if (event & EPOLLIN)
-					{
-						HandleReadComplete(s);
-					}
-
-					if (event & EPOLLOUT)
+					Socket* s = (Socket*)socket;
+					REF_ADD(s);
+					if (event & EPOLLHUP || event & EPOLLERR)
 					{
 						if (s->status_ == socket_status_connecting)
 						{
-							HandleConnect(s, true);
+							HandleConnect(s, false);
 						}
 						else
 						{
-							HandleCanWrite(s);
+							SocketMgr::get_instance()->CloseSocket(s);
 						}
 					}
+					else
+					{
+						if (event & EPOLLIN)
+						{
+							HandleReadComplete(s);
+						}
+
+						if (event & EPOLLOUT)
+						{
+							if (s->status_ == socket_status_connecting)
+							{
+								HandleConnect(s, true);
+							}
+							else
+							{
+								HandleCanWrite(s);
+							}
+						}
+					}
+					REF_RELEASE(s);
 				}
-				REF_RELEASE(s);
 			}
 		}
 		else

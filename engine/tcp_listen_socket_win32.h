@@ -10,7 +10,7 @@
 
 #ifdef CONFIG_USE_IOCP
 
-class TCPListenSocket
+class TCPListenSocket : public SocketBase
 {
 public:
 	TCPListenSocket(const char* listen_address,
@@ -22,7 +22,7 @@ public:
 				 uint32 recvbuffersize,
 				 bool is_parse_package);
 
-	~TCPListenSocket();
+	virtual ~TCPListenSocket();
 
 	bool Start();
 	void Close();

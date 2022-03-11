@@ -361,6 +361,7 @@ void SocketMgr::EventLoop(int32 timeout)
 				default:
 					break;
 				}
+
 				REF_RELEASE(s);
 			}
 		}

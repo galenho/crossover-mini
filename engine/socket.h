@@ -38,7 +38,7 @@ enum SocketStatus
 	socket_status_closing		= 5
 };
 
-class Socket : public Referable
+class Socket : public SocketBase, public Referable
 {
 public:
 #ifdef CONFIG_USE_EPOLL
@@ -206,8 +206,6 @@ protected:
 	SOCKET fd_;
 	uint32 conn_idx_;
 	sockaddr_in m_client;
-
-	SocketType socket_type_;
 
 	HandleInfo onconnected_handler_;
 	HandleInfo onclose_handler_;

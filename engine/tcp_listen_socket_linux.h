@@ -13,7 +13,7 @@
 #include <errno.h>
 #include "socket_defines.h"
 
-class TCPListenSocket
+class TCPListenSocket : public SocketBase
 {
 public:
 	TCPListenSocket(const char* listen_address, 
@@ -25,13 +25,10 @@ public:
 				 uint32 recvbuffersize,
 				 bool is_parse_package = true);
 
-	~TCPListenSocket();
+	virtual ~TCPListenSocket();
 
 	bool Start();
 	void Close();
-
-	// 投递一个accept请求
-	bool PostAccept();
 
 	int GetFd();
 

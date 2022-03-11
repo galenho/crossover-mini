@@ -3,6 +3,9 @@
 #ifdef CONFIG_USE_EPOLL
 TCPListenSocket::TCPListenSocket(const char* listen_address, uint16 port, const HandleInfo onconnected_handler, const HandleInfo onclose_handler, const HandleInfo onrecv_handler, uint32 sendbuffersize, uint32 recvbuffersize, bool is_parse_package /*= true*/)
 {
+	socket_type_ = SOCKET_TYPE_TCP;
+	is_listen_ = true;
+
 	port_ = port;
 	onconnected_handler_ = onconnected_handler;
 	onclose_handler_ = onclose_handler;
@@ -41,7 +44,6 @@ TCPListenSocket::TCPListenSocket(const char* listen_address, uint16 port, const 
 	memset(&ev, 0, sizeof(epoll_event));
 	ev.events = EPOLLIN | EPOLLET;
 	ev.data.ptr = this;
-	ev.data.fd = 0;
 
 	int epoll_fd = SocketMgr::get_instance()->GetEpollFd();
 	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, socket_, &ev))
@@ -70,31 +72,7 @@ bool TCPListenSocket::Start()
 		return false;
 	}
 
-	// 先投递一个请求
-	ret = PostAccept();
-
 	return ret;
-}
-
-bool TCPListenSocket::PostAccept()
-{
-	int epoll_fd = SocketMgr::get_instance()->GetEpollFd();
-
-	struct epoll_event ev;
-	memset(&ev, 0, sizeof(epoll_event));
-	ev.events = EPOLLIN | EPOLLET;
-	ev.data.ptr = this;
-	ev.data.fd = 0;
-
-	if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, socket_, &ev))
-	{
-		PRINTF_ERROR("Could not post accept event on fd %u", socket_);
-		return false;
-	}
-	else
-	{
-		return true;
-	}
 }
 
 int TCPListenSocket::GetFd()

@@ -78,4 +78,15 @@ public:
 
 #endif
 
+class SocketBase
+{
+public:
+	SocketBase() { socket_type_ = SOCKET_TYPE_TCP; is_listen_ = false; }
+	virtual ~SocketBase() {}
+
+public:
+	SocketType socket_type_;
+	int is_listen_;
+};
+
 #endif
