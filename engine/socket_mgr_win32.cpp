@@ -37,7 +37,13 @@ void HandleAcceptUDPComplete(UDPListenSocket* s)
 {
 	//PRINTF_INFO("HandleAcceptUDPComplete fd = %d", s->socket_);
 
+	if (s->buff_len_ != 8 + 4)
+	{
+		return;
+	}
+	
 	uint8* buffer_start = (uint8*)(s->buff_);
+	
 	uint32 len = *((uint32*)(buffer_start));
 	if (len == 8)
 	{

@@ -37,7 +37,50 @@ void HandleAcceptTCPComplete(TCPListenSocket* s)
 
 void HandleAcceptUDPComplete(UDPListenSocket* s)
 {
+	printf("1\n");
 
+	sockaddr_in	client_addr_;
+	socklen_t addr_len = sizeof(client_addr_);
+	int bytes = recvfrom(s->socket_, s->buff_, sizeof(s->buff_), 0, (sockaddr*)&(client_addr_), &addr_len);
+	if (bytes > 0)
+	{
+		if (bytes != 8 + 4)
+		{
+			return;
+		}
+
+		printf("2\n");
+		uint8* buffer_start = (uint8*)(s->buff_);
+		uint32 len = *((uint32*)(buffer_start));
+		if (len == 8)
+		{
+			printf("3\n");
+
+			char src_conn_str[8] = "connect";
+			char dst_conn_str[8];
+			memcpy(dst_conn_str, (uint8*)(buffer_start + 4), 8);
+			if (strcmp(src_conn_str, dst_conn_str) == 0)
+			{
+				// 模拟tcp的accept, 创建一个新的一个udp socket
+				uint16 out_port = 0;
+				bool ret = SocketMgr::get_instance()->AcceptUDP(client_addr_,
+					s->onconnected_handler_,
+					s->onclose_handler_,
+					s->onrecv_handler_,
+					s->sendbuffersize_,
+					s->recvbuffersize_,
+					out_port);
+
+				// 回发一个连接包给UDP客户端, 告诉客户端新的端口号
+				if (ret)
+				{
+					RepServerPort rep_msg;
+					rep_msg.port = out_port;
+					sendto(s->socket_, (char*)&rep_msg, sizeof(rep_msg), 0, (sockaddr*)&client_addr_, sizeof(client_addr_));
+				}
+			}
+		}
+	}
 }
 
 void HandleConnect(Socket* s, bool is_success)
@@ -361,7 +404,7 @@ int SocketMgr::EventLoop(int32 timeout)
 				uint32 event = events[i].events;
 				SocketBase* socket = (Socket*)(events[i].data.ptr);
 
-				PRINTF_INFO("epoll_wait events = %d", events[i].events);
+				//PRINTF_INFO("epoll_wait events = %d", events[i].events);
 
 				if (socket == wakeup_s_) //唤醒事件
 				{

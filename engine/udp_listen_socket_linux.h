@@ -44,6 +44,8 @@ public:
 	HandleInfo onconnected_handler_;
 	HandleInfo onclose_handler_;
 	HandleInfo onrecv_handler_;
+
+	char buff_[128];
 };
 
 #endif
