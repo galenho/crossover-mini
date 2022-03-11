@@ -18,15 +18,15 @@ void HandleAcceptTCPComplete(TCPListenSocket* s)
 	int len = 0;
 	struct sockaddr_in tempAddress;
 
-	SOCKET aSocket = accept(socket_, (sockaddr*)&tempAddress_, (socklen_t*)&len);
+	SOCKET aSocket = accept(s->socket_, (sockaddr*)&tempAddress, (socklen_t*)&len);
 	if (aSocket == -1)
 	{
-		LOG_ERROR("accept error");
+		printf("accept error\n");
 		return;
 	}
 
-	SocketMgr::get_instance()->Accept(SocketMgr::get_instance()->Accept(aSocket,
-		*tempAddress,
+	SocketMgr::get_instance()->Accept(aSocket,
+		tempAddress,
 		s->onconnected_handler_,
 		s->onclose_handler_,
 		s->onrecv_handler_,
@@ -387,7 +387,7 @@ int SocketMgr::EventLoop(int32 timeout)
 					else if(socket->socket_type_ == SOCKET_TYPE_UDP)
 					{
 						UDPListenSocket* s = (UDPListenSocket*)socket;
-
+						HandleAcceptUDPComplete(s);
 					}
 					
 					continue;
