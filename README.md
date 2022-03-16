@@ -34,10 +34,7 @@
 			
 			yum install openssl-devel cyrus-sasl-devel
 
-		(2) 升级cmake 3.20.2
-
-
-		(3) 编译程序
+		(2) 编译程序
 		
 			cd sh
 			chmod -R 750 *
