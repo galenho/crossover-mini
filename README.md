@@ -7,6 +7,12 @@
 	开发，开发者可以利用现成代码模板，快速搭建类似bigworld引擎的多进程的MMORPG集群架构，也可以轻松地搭建其他游戏类型的
 	集群架构。
 
+		对crossover进行简化改造
+	
+		1. 去掉IOThread, 把网络和WorkThread合并，即网络和逻辑线程是同步操作，去掉网络层的锁
+		2. 把Socket监听线程去掉, 把它合并到IOCP/Epoll中
+
+		
 	    Giraffe在crossover框架的基础上开发的MMORPG分布式游戏服务器框架：https://github.com/galenho/Giraffe.git
 		
 	    QQ交流群: 365280857 (欢迎加入，互相学习)
@@ -55,9 +61,4 @@
 			cd test
 			../crossover hello_world.lua
 
-
-	四、对crossover进行简化改造
-	
-		1. 去掉IOThread, 把网络和WorkThread合并，即网络和逻辑线程是同步操作，去掉网络层的锁 (已完成)
-		2. 把Socket监听线程去掉, 把它合并到IOCP/Epoll中  (未完成)
 
